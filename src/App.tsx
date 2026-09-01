@@ -9,11 +9,22 @@ import { CustomCodeEditorModal, CustomKey } from './components/CustomCodeEditorM
 type ActiveView = 'dashboard' | 'sunset-lamp' | 'bedside-lamp' | 'smart-fan';
 
 export default function App() {
-  const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+  const [activeView, setActiveView] = useState<ActiveView>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view') as ActiveView;
+    return ['dashboard', 'sunset-lamp', 'bedside-lamp', 'smart-fan'].includes(viewParam)
+      ? viewParam
+      : 'dashboard';
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Light / Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const themeParam = params.get('theme');
+    if (themeParam === 'light') return false;
+    if (themeParam === 'dark') return true;
+
     const saved = localStorage.getItem('iremote_theme');
     return saved !== null ? saved === 'dark' : true;
   });

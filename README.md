@@ -1,120 +1,131 @@
-# IRemote 📡✨
+# IRemote
 
-A minimal, luxury smart remote control app designed for the **Poco X7 Pro** hardware IR Blaster. Seamlessly controls your **Sunset Projector Lamp**, **Three O Touch Bedside Night Lamp**, and **Smart Fan** with tactile haptics, an upward rainbow arc dial, aesthetic color pickers, and live 3D room feedback.
+A modern, minimal infrared smart control application architected for the Poco X7 Pro hardware IR Blaster. Provides direct hardware pulse transmission via Android ConsumerIrManager, dual light/dark themes, an upward rainbow arc gauge, aesthetic color wheels, and a 3D isometric dorm room view.
 
-[![Deploy to GitHub Pages](https://github.com/officiallygod/IRemote/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/officiallygod/IRemote/actions/workflows/deploy-pages.yml)
 [![Build Android APK](https://github.com/officiallygod/IRemote/actions/workflows/build-apk.yml/badge.svg)](https://github.com/officiallygod/IRemote/actions/workflows/build-apk.yml)
+[![Deploy Live Preview](https://github.com/officiallygod/IRemote/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/officiallygod/IRemote/actions/workflows/deploy-pages.yml)
+[![Node.js Version](https://img.shields.io/badge/Node.js-22%20LTS-339933?logo=nodedotjs)](https://nodejs.org/)
+[![React Version](https://img.shields.io/badge/React-18%20%2F%2019-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite)](https://vitejs.dev/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-8.x-119EFF?logo=capacitor)](https://capacitorjs.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![Android SDK](https://img.shields.io/badge/Android%20API-34%2B-3DDC84?logo=android)](https://developer.android.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-🌐 **Live Web Preview**: [https://officiallygod.github.io/IRemote/](https://officiallygod.github.io/IRemote/)
+Live Web Preview: [https://officiallygod.github.io/IRemote/](https://officiallygod.github.io/IRemote/)
 
 ---
 
-## 📸 Real Devices & App Previews
+## Interface Overview
+
+### Dark Mode vs Light Mode
 
 <div align="center">
   <table>
     <tr>
-      <td align="center"><b>App Dashboard & 3D Dorm Room</b></td>
-      <td align="center"><b>Sunset Projector Lamp</b></td>
-      <td align="center"><b>Three O Bedside Night Lamp</b></td>
+      <th align="center">Dark Mode (Dorm Room)</th>
+      <th align="center">Light Mode (Dorm Room)</th>
     </tr>
     <tr>
-      <td><img src="docs/screenshots/dashboard.png" width="260" alt="Dashboard" /></td>
-      <td><img src="docs/screenshots/sunset_lamp.png" width="260" alt="Sunset Lamp" /></td>
-      <td><img src="docs/screenshots/bedside_lamp.png" width="260" alt="Bedside Lamp" /></td>
+      <td align="center"><img src="docs/screenshots/app_dark_mode.png" width="360" alt="IRemote Dark Mode" /></td>
+      <td align="center"><img src="docs/screenshots/app_light_mode.png" width="360" alt="IRemote Light Mode" /></td>
+    </tr>
+  </table>
+</div>
+
+### Device Control Screens
+
+<div align="center">
+  <table>
+    <tr>
+      <th align="center">Sunset Lamp Controller</th>
+      <th align="center">Smart Fan Controller (3 Speeds)</th>
+    </tr>
+    <tr>
+      <td align="center"><img src="docs/screenshots/sunset_lamp_control.png" width="360" alt="Sunset Lamp Control" /></td>
+      <td align="center"><img src="docs/screenshots/smart_fan_control.png" width="360" alt="Smart Fan Control" /></td>
     </tr>
   </table>
 </div>
 
 ---
 
-## ⚡ Features
+## Architecture & System Features
 
-### 1. 🛏️ 3D Isometric Dorm Room
-* **Modeled after Allen's actual room layout**:
-  * **Study Desk**: Positioned along the left wall with an open laptop and the **Sunset Lamp** sitting on it.
-  * **Window**: Located directly beside the study desk with sunlight streaming onto the wood floor.
-  * **Bed & Nightstand**: Cozy bed on the right wall with a nightstand holding the **Three O Bedside Touch Lamp**.
-  * **Interactive Hotspot Pins**: Tap lamps directly in the 3D room to toggle them on/off with real-time room lighting effects.
-  * **Clean Status Badges**: Shows live temperature (`22°`) and active device count.
+### 1. Hardware Infrared Transmission Layer
+* Native Android plugin interfacing with `android.hardware.ConsumerIrManager`.
+* Real-time 32-bit NEC protocol pulse encoder converting hexadecimal commands into 38.0 kHz microsecond timing arrays (alternating marks and spaces).
+* Virtual infrared diode HUD for real-time signal inspection, frequency validation, and timing analysis.
 
-### 2. 🌅 Sunset Projector Lamp
-* **Authentic Solar Projection**: Projects a high-contrast circular golden-orange sun halo with a crimson radiant core directly onto the wall.
-* **Mood Presets**: Instant one-tap switches for *Golden Hour*, *Deep Sunset*, *Twilight Violet*, and *Nordic Sky*.
-* **Dimmer Dial**: Smooth upward arc slider for 0–100% intensity adjustments.
+### 2. 3D Isometric Dorm Room
+* Accurate architectural model featuring a study desk positioned beside an exterior window with daylight ray casting.
+* Interactive touch hotspots mapped directly to the Sunset Projector Lamp and Three O Touch Bedside Lamp.
+* Real-time status readouts including ambient temperature and active appliance counts.
 
-### 3. 🌙 Three O Touch Bedside Night Lamp
-* **Translucent Frosted Dome**: Diffuses soft 2700K warm candlelight or rich RGB mood tones.
-* **Touch Sensor Circle**: Direct on-screen power toggle simulating the real bedside lamp's capacitive ring.
+### 3. Sunset Projector Lamp Controller
+* High-contrast circular solar halo projection modeling real optical dispersion.
+* Presets for Golden Hour, Deep Sunset, Twilight Violet, and Nordic Sky.
+* Upward rainbow arc dial gauge for 0-100% dimmer control without UI overlap.
 
-### 4. 🌀 Smart Fan Controller
-* **Poco X7 Pro Hardware Codes**: Integrated exact NEC 38kHz codes:
-  * **Power On/Off**: `0x00FF58A7`
-  * **Wind Speed (3 Speeds)**: `0xC03FC03F` via the Arc dial
-  * **Oscillation Swing**: `0x926DE01F`
-  * **Timer (Off, 1h, 2h, 4h, 8h)**: `0x00FF906F`
-  * **Wind Mode (Normal, Breeze, Sleep)**: `0x5D05807F`
-* **Animated Blade Hub**: Real-time rotating blades synchronized to the selected speed.
+### 4. Three O Bedside Touch Night Lamp
+* Diffuse cylindrical dome lighting model supporting 2700K warm candlelight and dynamic RGB hues.
+* Capacitive touch ring simulation for immediate on/off toggling.
 
-### 5. 🎨 Aesthetic Color System & Key Matrix
-* **360° Radial Color Wheel**: Continuous color picker that automatically translates any hue into the closest 38kHz NEC remote code.
-* **24-Key China Remote Matrix**: Complete tactile grid with Red, Green, Blue, 12 shades, and dynamic modes (Flash, Strobe, Fade, Smooth).
-* **IR Key Manager**: Save, test, and blast any custom 32-bit hex code anytime.
+### 5. Smart Fan Controller
+* 3-speed arc dial configuration (Speed 1, Speed 2, Speed 3).
+* Integrated NEC codes for Poco X7 Pro hardware:
+  * Power On/Off: `0x00FF58A7`
+  * Wind Speed: `0xC03FC03F`
+  * Oscillation Swing: `0x926DE01F`
+  * Timer: `0x00FF906F`
+  * Wind Mode: `0x5D05807F`
 
-### 6. ☀️ Light & Dark Mode
-* Header toggle for switching between sunny aesthetic light mode and deep matte black luxury dark mode.
+### 6. Custom IR Key Manager
+* Interactive blank key generator allowing custom key naming, hex code specification, and live hardware test firing.
+* Complete 24-key matrix for RGB LED strips and continuous 360-degree color wheel mapping.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## Android APK Generation
 
-* **Frontend**: React 18, TypeScript, Vite
-* **Styling & Animations**: Tailwind CSS, Framer Motion, Manrope typography
-* **Cross-Platform Container**: Capacitor (`@capacitor/core`, `@capacitor/android`, `@capacitor/haptics`)
-* **Hardware Infrared Layer**:
-  * Native Kotlin/Java plugin calling `android.hardware.ConsumerIrManager`
-  * Generates alternating microsecond mark/space arrays for 38.0 kHz carrier frequency
-  * Full web fallback with virtual diode beam HUD and signal inspector
+### Method A: Automated GitHub Actions Build (Recommended)
+This repository includes a continuous integration workflow that packages the debug APK on every commit using Node.js 22 and Java 21:
+1. Navigate to the **Actions** tab in this GitHub repository.
+2. Open the latest run for **Build Android APK**.
+3. Under **Artifacts**, download `IRemote-Debug-APK`.
+4. Transfer and install `app-debug.apk` on your Poco X7 Pro.
 
----
-
-## 📱 How to Build the Standalone Android APK
-
-### Option A: Automatic Cloud Build (Zero Setup)
-Every time code is pushed to GitHub, **GitHub Actions** compiles the APK automatically:
-1. Go to the **Actions** tab on your repository.
-2. Select the latest **Build Android APK** workflow run.
-3. Download `IRemote-Debug-APK.zip` under **Artifacts**.
-4. Extract and install `app-debug.apk` directly on your Poco X7 Pro!
-
-### Option B: Local Android Studio Build
+### Method B: Local Android Studio Build
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Build production web bundle
+# 2. Compile production bundle
 npm run build
 
-# 3. Sync to native Android project
+# 3. Synchronize Capacitor assets
 npx cap sync android
 
 # 4. Open in Android Studio
 npx cap open android
 ```
-In Android Studio: click **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+Within Android Studio, select **Build > Build Bundle(s) / APK(s) > Build APK(s)** to generate `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
-## 💻 Local Development
+## Local Development Server
 
 ```bash
-# Start local development server
+# Install packages
+npm install
+
+# Launch development server
 npm run dev
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:5173](http://localhost:5173) in any standard browser.
 
 ---
 
-## 📄 License
-MIT © Allen (officiallygod)
+## License
+MIT License. Copyright (c) Allen (officiallygod).
