@@ -50,10 +50,10 @@ export const BedsideLampView: React.FC<BedsideLampViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen pb-20 px-4 sm:px-6 pt-5 select-none max-w-md mx-auto justify-between">
+    <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
       <div>
         {/* Top Navigation */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-5">
           <button
             onClick={() => {
               hapticFeedback.click();
@@ -222,7 +222,7 @@ export const BedsideLampView: React.FC<BedsideLampViewProps> = ({
                 className="w-3.5 h-3.5 rounded-full shadow-sm"
                 style={{ backgroundColor: state.color }}
               />
-              <span>Aesthetic Color Palette & 24-Key China LED</span>
+              <span>Color Palette & 24-Key Remote</span>
             </div>
             {showColorPicker ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>

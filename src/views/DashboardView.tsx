@@ -55,10 +55,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     (fanState.isOn ? 1 : 0);
 
   return (
-    <div className="flex flex-col w-full min-h-screen pb-20 px-4 sm:px-6 pt-5 select-none max-w-md mx-auto justify-between">
+    <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
       <div>
         {/* Top Header: "Hi, Allen!" + Theme Toggle + Settings */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <span
               className={`text-xs font-semibold block mb-0.5 tracking-wide ${

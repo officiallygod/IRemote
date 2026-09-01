@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Palette, Sparkles, Sliders, Check } from 'lucide-react';
 import { RGB_LED_COLORS, SUNSET_LAMP_PRESETS, RgbColorKey } from '../data/rgbLedCodes';
 import { irBlaster } from '../services/irBlaster';
@@ -18,8 +18,26 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
   onSelectColor,
   isDarkMode = true,
 }) => {
-  const [activeTab, setActiveTab] = useState<PickerTab>('sunset');
+  // Remember tab selection
+  const [activeTab, setActiveTab] = useState<PickerTab>(() => {
+    return (localStorage.getItem('iremote_picker_tab') as PickerTab) || 'sunset';
+  });
+
+  // Local drag preview color (updates fluidly without blasting IR on every micro-drag)
+  const [dragColor, setDragColor] = useState<string>(selectedColor);
+  const [isDraggingWheel, setIsDraggingWheel] = useState(false);
   const wheelRef = useRef<HTMLDivElement | null>(null);
+  const pendingIrRef = useRef<{ hex: string; name: string } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('iremote_picker_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!isDraggingWheel) {
+      setDragColor(selectedColor);
+    }
+  }, [selectedColor, isDraggingWheel]);
 
   const handleSelectPreset = (preset: typeof SUNSET_LAMP_PRESETS[0]) => {
     hapticFeedback.click();
@@ -30,17 +48,18 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
   const handleSelectLedKey = (key: RgbColorKey) => {
     hapticFeedback.click();
     onSelectColor(key.displayColor, key.hexCode);
-    irBlaster.sendNec(key.hexCode, key.name, 'Chinese RGB LED');
+    irBlaster.sendNec(key.hexCode, key.name, 'RGB Light');
   };
 
-  const handleWheelPointer = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+  // Dragging on the wheel: ONLY updates visual preview, does NOT send IR repeatedly
+  const updateWheelColorFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
       if (!wheelRef.current) return;
       const rect = wheelRef.current.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
-      const x = e.clientX - centerX;
-      const y = e.clientY - centerY;
+      const x = clientX - centerX;
+      const y = clientY - centerY;
 
       const dist = Math.sqrt(x * x + y * y);
       const maxRadius = rect.width / 2;
@@ -51,21 +70,50 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
 
       const sat = Math.min(100, Math.round((dist / maxRadius) * 100));
       const rgb = hslToHex(Math.round(angle), sat, 55);
-      hapticFeedback.tick();
 
       const closestKey = findClosestNecColor(angle);
-      onSelectColor(rgb, closestKey.hexCode);
-      irBlaster.sendNec(closestKey.hexCode, closestKey.name, 'RGB Light');
+      setDragColor(rgb);
+      pendingIrRef.current = { hex: closestKey.hexCode, name: closestKey.name };
     },
-    [onSelectColor]
+    []
   );
+
+  const handleWheelPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDraggingWheel(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    updateWheelColorFromPointer(e.clientX, e.clientY);
+  };
+
+  const handleWheelPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingWheel) {
+      updateWheelColorFromPointer(e.clientX, e.clientY);
+    }
+  };
+
+  // On pointer up (release): Commit ONE clean selection and blast IR ONCE
+  const handleWheelPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingWheel) {
+      setIsDraggingWheel(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignored
+      }
+
+      if (pendingIrRef.current) {
+        hapticFeedback.tick();
+        onSelectColor(dragColor, pendingIrRef.current.hex);
+        irBlaster.sendNec(pendingIrRef.current.hex, pendingIrRef.current.name, 'RGB Light');
+      }
+    }
+  };
 
   return (
     <div
-      className={`w-full flex flex-col rounded-3xl p-4 border transition-colors ${
+      className={`w-full flex flex-col rounded-3xl p-4 sm:p-5 border transition-all ${
         isDarkMode
-          ? 'bg-[#18181B]/90 border-surface-border text-white shadow-xl'
-          : 'bg-white border-slate-200 text-slate-900 shadow-lg'
+          ? 'bg-[#18181B] border-surface-border text-white shadow-2xl'
+          : 'bg-white border-slate-200 text-slate-900 shadow-xl'
       }`}
     >
       {/* Tab Switcher */}
@@ -79,7 +127,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             hapticFeedback.tick();
             setActiveTab('sunset');
           }}
-          className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'sunset'
               ? isDarkMode
                 ? 'bg-surface text-white shadow-sm border border-surface-border'
@@ -98,7 +146,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             hapticFeedback.tick();
             setActiveTab('wheel');
           }}
-          className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'wheel'
               ? isDarkMode
                 ? 'bg-surface text-white shadow-sm border border-surface-border'
@@ -117,7 +165,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             hapticFeedback.tick();
             setActiveTab('matrix');
           }}
-          className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'matrix'
               ? isDarkMode
                 ? 'bg-surface text-white shadow-sm border border-surface-border'
@@ -128,7 +176,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
           }`}
         >
           <Sliders size={14} />
-          24-Key LED
+          24-Key Remote
         </button>
       </div>
 
@@ -141,11 +189,11 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
               <button
                 key={preset.id}
                 onClick={() => handleSelectPreset(preset)}
-                className={`relative flex items-center justify-between p-3 rounded-2xl transition-all duration-200 text-left border ${
+                className={`relative flex items-center justify-between p-3.5 rounded-2xl transition-all duration-200 text-left border ${
                   isSelected
                     ? isDarkMode
-                      ? 'bg-surface border-accent-amber/60 shadow-glow-amber'
-                      : 'bg-amber-50/80 border-amber-400 shadow-md'
+                      ? 'bg-surface border-amber-400/60 shadow-glow-amber'
+                      : 'bg-amber-50/90 border-amber-400 shadow-md'
                     : isDarkMode
                     ? 'bg-[#141416] border-surface-border hover:bg-surface/50'
                     : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
@@ -176,7 +224,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
                 </div>
 
                 <span
-                  className={`text-[11px] font-mono px-2 py-1 rounded-lg border ${
+                  className={`text-[11px] font-mono px-2.5 py-1 rounded-lg border ${
                     isDarkMode
                       ? 'bg-surface text-accent-muted border-surface-border'
                       : 'bg-white text-slate-600 border-slate-200'
@@ -190,16 +238,15 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
         </div>
       )}
 
-      {/* Tab Content 2: Radial Color Wheel */}
+      {/* Tab Content 2: Radial Color Wheel (Zero toast spam on drag) */}
       {activeTab === 'wheel' && (
-        <div className="flex flex-col items-center justify-center py-2">
+        <div className="flex flex-col items-center justify-center py-3">
           <div
             ref={wheelRef}
-            onPointerDown={handleWheelPointer}
-            onPointerMove={(e) => {
-              if (e.buttons === 1) handleWheelPointer(e);
-            }}
-            className="relative w-52 h-52 rounded-full cursor-crosshair shadow-2xl p-1.5 touch-none flex items-center justify-center"
+            onPointerDown={handleWheelPointerDown}
+            onPointerMove={handleWheelPointerMove}
+            onPointerUp={handleWheelPointerUp}
+            className="relative w-52 h-52 rounded-full cursor-crosshair shadow-2xl p-1.5 touch-none flex items-center justify-center select-none"
             style={{
               background:
                 'conic-gradient(from 0deg, #FF0000, #FFA500, #FFFF00, #00FF00, #00FFFF, #0000FF, #FF00FF, #FF0000)',
@@ -211,10 +258,10 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
               }`}
             >
               <div
-                className="w-9 h-9 rounded-full mb-1 shadow-md transition-colors duration-200"
+                className="w-10 h-10 rounded-full mb-1 shadow-md transition-colors duration-150"
                 style={{
-                  backgroundColor: selectedColor,
-                  boxShadow: `0 0 16px ${selectedColor}80`,
+                  backgroundColor: dragColor,
+                  boxShadow: `0 0 16px ${dragColor}80`,
                 }}
               />
               <span
@@ -222,21 +269,21 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
                   isDarkMode ? 'text-white' : 'text-slate-900'
                 }`}
               >
-                {selectedColor.toUpperCase()}
+                {dragColor.toUpperCase()}
               </span>
             </div>
           </div>
           <p
-            className={`text-xs mt-3 text-center ${
+            className={`text-xs mt-3.5 text-center ${
               isDarkMode ? 'text-accent-muted' : 'text-slate-500'
             }`}
           >
-            Drag along the circle to shift hues • Fires 38kHz NEC pulses
+            Drag to preview hue • Releases 1 clean signal on touch release
           </p>
         </div>
       )}
 
-      {/* Tab Content 3: China 24-Key Remote Matrix */}
+      {/* Tab Content 3: Standard 24-Key Remote Matrix */}
       {activeTab === 'matrix' && (
         <div className="flex flex-col">
           <div className="grid grid-cols-4 gap-2.5">
@@ -271,12 +318,12 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             })}
           </div>
           <div
-            className={`mt-3 text-[11px] text-center flex items-center justify-center gap-2 ${
+            className={`mt-3.5 text-[11px] text-center flex items-center justify-center gap-2 ${
               isDarkMode ? 'text-accent-muted' : 'text-slate-500'
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            Standard 24-Key China RGB IR controller mapping
+            Standard 24-Key RGB infrared mapping
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ export interface RgbColorKey {
   label?: string;
 }
 
-// 24-key standard Chinese RGB remote NEC codes (address 0x00F7)
+// 24-key standard RGB remote NEC codes (address 0x00F7)
 export const RGB_LED_CONTROLS = {
   powerOn: { id: 'pwr-on', name: 'Power ON', hex: '00F7C03F', protocol: 'NEC' as const },
   powerOff: { id: 'pwr-off', name: 'Power OFF', hex: '00F740BF', protocol: 'NEC' as const },

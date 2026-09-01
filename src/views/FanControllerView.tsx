@@ -63,10 +63,10 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
   const animationDuration = state.isOn ? `${Math.max(0.4, 2.5 - state.speed * 0.45)}s` : '0s';
 
   return (
-    <div className="flex flex-col w-full min-h-screen pb-20 px-4 sm:px-6 pt-5 select-none max-w-md mx-auto justify-between">
+    <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
       <div>
         {/* Top Navigation */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-5">
           <button
             onClick={() => {
               hapticFeedback.click();

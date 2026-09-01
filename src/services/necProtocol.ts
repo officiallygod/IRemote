@@ -1,6 +1,6 @@
 /**
  * NEC Infrared Protocol Encoder
- * Standard 38kHz NEC pulse format used by TVs, ACs, Fans, China RGB strips, and Sunset Lamps.
+ * Standard 38kHz NEC pulse format used by Fans, ACs, and RGB Lamps.
  */
 
 export interface NecSignal {
@@ -11,7 +11,6 @@ export interface NecSignal {
 }
 
 export function encodeNecHex(hex: string, carrierFrequency: number = 38000): NecSignal {
-  // Clean hex string
   const cleanHex = hex.replace(/^0x/i, '').trim().padStart(8, '0').toUpperCase();
   const num = parseInt(cleanHex, 16);
 
@@ -22,15 +21,13 @@ export function encodeNecHex(hex: string, carrierFrequency: number = 38000): Nec
   const ONE_SPACE = 1690;
   const ZERO_SPACE = 560;
   const STOP_MARK = 560;
+  const TRAILING_SPACE = 20000; // 20ms trailing space ensures even-length mark/space pairs for Xiaomi HAL
 
   const pattern: number[] = [HDR_MARK, HDR_SPACE];
 
-  // Convert 32-bit number to binary string (MSB to LSB or LSB to MSB based on standard NEC transmission)
-  // NEC transmits 32 bits: 8-bit addr, 8-bit inv-addr, 8-bit cmd, 8-bit inv-cmd.
-  // Bits in each byte are transmitted LSB first.
   let binaryStr = '';
   
-  // Break into 4 bytes
+  // 4 bytes: [Address, ~Address, Command, ~Command]
   const b0 = (num >>> 24) & 0xff;
   const b1 = (num >>> 16) & 0xff;
   const b2 = (num >>> 8) & 0xff;
@@ -39,7 +36,6 @@ export function encodeNecHex(hex: string, carrierFrequency: number = 38000): Nec
 
   for (const byte of bytes) {
     for (let i = 0; i < 8; i++) {
-      // Bit test (LSB first per byte)
       const bit = (byte >> i) & 1;
       binaryStr += bit;
       pattern.push(BIT_MARK);
@@ -47,8 +43,9 @@ export function encodeNecHex(hex: string, carrierFrequency: number = 38000): Nec
     }
   }
 
-  // Final stop bit
+  // Final stop bit and trailing space (making pattern length exactly 68 - an even number)
   pattern.push(STOP_MARK);
+  pattern.push(TRAILING_SPACE);
 
   return {
     hex: '0x' + cleanHex,
