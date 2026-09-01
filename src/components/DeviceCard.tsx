@@ -6,7 +6,7 @@ interface DeviceCardProps {
   id: string;
   deviceIndexLabel: string; // e.g. "Device 1"
   name: string; // e.g. "Sunset Lamp"
-  type: 'light' | 'fan' | 'sunset' | 'strip';
+  type: 'light' | 'fan' | 'sunset' | 'strip' | 'fireplace';
   isOn: boolean;
   onTogglePower: (e: React.MouseEvent) => void;
   onClick: () => void;
@@ -32,6 +32,8 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
         return <Fan size={18} className={isOn ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} />;
       case 'sunset':
         return <Flame size={18} />;
+      case 'fireplace':
+        return <Flame size={18} className={isOn ? 'text-amber-600 animate-pulse' : ''} />;
       default:
         return <Lightbulb size={18} />;
     }
@@ -50,7 +52,9 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
         onClick();
       }}
       className={`relative p-4 rounded-3xl cursor-pointer transition-all duration-300 flex flex-col justify-between border ${
-        isOn && type === 'sunset'
+        isOn && type === 'fireplace'
+          ? 'bg-[#FED7AA] text-[#121214] border-[#FDBA74] shadow-glow-amber'
+          : isOn && type === 'sunset'
           ? 'bg-[#F8E5A5] text-[#121214] border-[#F8E5A5] shadow-glow-amber'
           : isOn && (type === 'light' || type === 'strip')
           ? 'bg-[#C5F5FA] text-[#121214] border-[#C5F5FA] shadow-glow-cyan'

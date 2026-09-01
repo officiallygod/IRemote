@@ -46,12 +46,30 @@ Live Web Preview: [https://officiallygod.github.io/IRemote/](https://officiallyg
       <td align="center"><img src="docs/screenshots/sunset_lamp_control.png" width="360" alt="Sunset Lamp Control" /></td>
       <td align="center"><img src="docs/screenshots/smart_fan_control.png" width="360" alt="Smart Fan Control" /></td>
     </tr>
+    <tr>
+      <th align="center" colspan="2">Fireplace Flame Humidifier Controller</th>
+    </tr>
+    <tr>
+      <td align="center" colspan="2"><img src="docs/screenshots/fireplace_control.png" width="360" alt="Fireplace Controller" /></td>
+    </tr>
   </table>
 </div>
 
 ---
 
 ## Architecture & System Features
+
+### 1. Fireplace Flame Humidifier & Diffuser (4-Button Pebble Remote)
+* Direct integration of verified NEC codes from IrCode Finder:
+  * **Toggle Fireplace Light Effect**: `0xC2E238C7` (Cycles 6 authentic flame colors: Crimson, Gold, Green, Cyan, Cobalt Blue, Amethyst Purple)
+  * **Switch Fog Light Effect**: `0xC2E29867` (Toggles rising flame fog mist)
+  * **Timer**: `0xC2E27887` (Cycles 1h, 3h, 5h, ON)
+  * **Power On/Off**: Integrated candidate testing engine (Address `0xC2E2`)
+* Visual animated fireplace box with charred log silhouettes, pulsing glowing ember cracks, and illuminated water mist flames.
+
+### 2. Physical 24-Key Remote Replica
+* 1:1 tactile digital replica of the physical white 24-key remote with address switcher (`0x00F7`, `0x00EF`, `0xFF00`).
+* Real-time color synchronization and mode selection (Flash, Strobe, Fade, Smooth).
 
 ### 1. Hardware Infrared Transmission Layer
 * Native Android plugin interfacing with `android.hardware.ConsumerIrManager`.

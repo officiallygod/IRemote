@@ -3,16 +3,17 @@ import { DashboardView } from './views/DashboardView';
 import { SunsetLampView } from './views/SunsetLampView';
 import { BedsideLampView } from './views/BedsideLampView';
 import { FanControllerView } from './views/FanControllerView';
+import { FireplaceView, FireplaceState } from './views/FireplaceView';
 import { IrSignalIndicator } from './components/IrSignalIndicator';
 import { CustomCodeEditorModal, CustomKey } from './components/CustomCodeEditorModal';
 
-type ActiveView = 'dashboard' | 'sunset-lamp' | 'bedside-lamp' | 'smart-fan';
+type ActiveView = 'dashboard' | 'sunset-lamp' | 'bedside-lamp' | 'smart-fan' | 'fireplace';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>(() => {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view') as ActiveView;
-    return ['dashboard', 'sunset-lamp', 'bedside-lamp', 'smart-fan'].includes(viewParam)
+    return ['dashboard', 'sunset-lamp', 'bedside-lamp', 'smart-fan', 'fireplace'].includes(viewParam)
       ? viewParam
       : 'dashboard';
   });
@@ -86,6 +87,14 @@ export default function App() {
       : { isOn: true, speed: 3, isSwinging: true, timer: 'Off', mode: 'Normal' };
   });
 
+  // Device 4: Fireplace Flame Humidifier State (Image 1 & 2)
+  const [fireplaceState, setFireplaceState] = useState<FireplaceState>(() => {
+    const saved = localStorage.getItem('iremote_fireplace');
+    return saved
+      ? JSON.parse(saved)
+      : { isOn: true, isSmokeOn: true, flameColor: '#F59E0B', flameColorName: 'Golden Amber', timer: 'Off' };
+  });
+
   // Custom IR Keys
   const [customKeys, setCustomKeys] = useState<CustomKey[]>(() => {
     const saved = localStorage.getItem('iremote_custom_keys');
@@ -94,7 +103,8 @@ export default function App() {
       : [
           { id: 'k1', name: 'Fan Turbo Mode', hex: 'C03FC03F', color: '#3B82F6' },
           { id: 'k2', name: 'Sunset Flash', hex: '00F7D02F', color: '#EC4899' },
-          { id: 'k3', name: 'Living Room All Off', hex: '00FF58A7', color: '#EF4444' },
+          { id: 'k3', name: 'Fireplace Fog Mist', hex: 'C2E29867', color: '#06B6D4' },
+          { id: 'k4', name: 'Fireplace Color Shift', hex: 'C2E238C7', color: '#F59E0B' },
         ];
   });
 
@@ -110,6 +120,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('iremote_fan', JSON.stringify(fanState));
   }, [fanState]);
+
+  useEffect(() => {
+    localStorage.setItem('iremote_fireplace', JSON.stringify(fireplaceState));
+  }, [fireplaceState]);
 
   useEffect(() => {
     localStorage.setItem('iremote_custom_keys', JSON.stringify(customKeys));
@@ -143,9 +157,11 @@ export default function App() {
             sunsetState={sunsetState}
             ledStripState={bedsideState}
             fanState={fanState}
+            fireplaceState={fireplaceState}
             onToggleSunset={() => setSunsetState((prev) => ({ ...prev, isOn: !prev.isOn }))}
             onToggleLedStrip={() => setBedsideState((prev) => ({ ...prev, isOn: !prev.isOn }))}
             onToggleFan={() => setFanState((prev) => ({ ...prev, isOn: !prev.isOn }))}
+            onToggleFireplace={() => setFireplaceState((prev) => ({ ...prev, isOn: !prev.isOn }))}
           />
         )}
 
@@ -172,6 +188,15 @@ export default function App() {
             onBack={() => setActiveView('dashboard')}
             state={fanState}
             onUpdateState={(update) => setFanState((prev) => ({ ...prev, ...update }))}
+            isDarkMode={isDarkMode}
+          />
+        )}
+
+        {activeView === 'fireplace' && (
+          <FireplaceView
+            onBack={() => setActiveView('dashboard')}
+            state={fireplaceState}
+            onUpdateState={(update) => setFireplaceState((prev) => ({ ...prev, ...update }))}
             isDarkMode={isDarkMode}
           />
         )}

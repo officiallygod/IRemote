@@ -14,9 +14,11 @@ interface DashboardViewProps {
   sunsetState: { isOn: boolean; brightness: number; color: string; moodName: string };
   ledStripState: { isOn: boolean; brightness: number; color: string };
   fanState: { isOn: boolean; speed: number; isSwinging: boolean };
+  fireplaceState: { isOn: boolean; isSmokeOn: boolean; flameColor: string; flameColorName: string; timer: string };
   onToggleSunset: () => void;
   onToggleLedStrip: () => void;
   onToggleFan: () => void;
+  onToggleFireplace: () => void;
 }
 
 const ZONES = ['Dorm Room'];
@@ -29,9 +31,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   sunsetState,
   ledStripState,
   fanState,
+  fireplaceState,
   onToggleSunset,
   onToggleLedStrip,
   onToggleFan,
+  onToggleFireplace,
 }) => {
   const [selectedZone, setSelectedZone] = useState('Dorm Room');
   const [karlsruheTemp, setKarlsruheTemp] = useState('22°');
@@ -52,7 +56,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const activeCount =
     (sunsetState.isOn ? 1 : 0) +
     (ledStripState.isOn ? 1 : 0) +
-    (fanState.isOn ? 1 : 0);
+    (fanState.isOn ? 1 : 0) +
+    (fireplaceState.isOn ? 1 : 0);
 
   return (
     <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
@@ -214,21 +219,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             isDarkMode={isDarkMode}
           />
 
-          {/* Device 3: Smart Fan (with Poco X7 Pro IR codes) */}
-          <div className="col-span-2 sm:col-span-1">
-            <DeviceCard
-              id="device-fan"
-              deviceIndexLabel="Device 3"
-              name="Smart Fan"
-              type="fan"
-              isOn={fanState.isOn}
-              onTogglePower={onToggleFan}
-              onClick={() => onOpenDevice('smart-fan')}
-              badgeText={`Speed ${fanState.speed} • ${fanState.isSwinging ? 'Swing' : 'Static'}`}
-              accentColor="#BAE6FD"
-              isDarkMode={isDarkMode}
-            />
-          </div>
+          {/* Device 3: Smart Fan */}
+          <DeviceCard
+            id="device-fan"
+            deviceIndexLabel="Device 3"
+            name="Smart Fan"
+            type="fan"
+            isOn={fanState.isOn}
+            onTogglePower={onToggleFan}
+            onClick={() => onOpenDevice('smart-fan')}
+            badgeText={`Speed ${fanState.speed} • ${fanState.isSwinging ? 'Swing' : 'Static'}`}
+            accentColor="#BAE6FD"
+            isDarkMode={isDarkMode}
+          />
+
+          {/* Device 4: Flame Humidifier / Fireplace */}
+          <DeviceCard
+            id="device-fireplace"
+            deviceIndexLabel="Device 4"
+            name="Fireplace"
+            type="fireplace"
+            isOn={fireplaceState.isOn}
+            onTogglePower={onToggleFireplace}
+            onClick={() => onOpenDevice('fireplace')}
+            badgeText={fireplaceState.isOn ? fireplaceState.flameColorName : 'Off'}
+            accentColor="#FED7AA"
+            isDarkMode={isDarkMode}
+          />
         </div>
       </div>
     </div>

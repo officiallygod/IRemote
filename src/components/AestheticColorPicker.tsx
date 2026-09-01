@@ -3,6 +3,7 @@ import { Palette, Sparkles, Sliders, Check } from 'lucide-react';
 import { RGB_LED_COLORS, SUNSET_LAMP_PRESETS, RgbColorKey } from '../data/rgbLedCodes';
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
+import { PhysicalWhiteRemote } from './PhysicalWhiteRemote';
 
 interface AestheticColorPickerProps {
   selectedColor: string;
@@ -283,48 +284,13 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
         </div>
       )}
 
-      {/* Tab Content 3: Standard 24-Key Remote Matrix */}
+      {/* Tab Content 3: Physical 24-Key Remote Replica */}
       {activeTab === 'matrix' && (
-        <div className="flex flex-col">
-          <div className="grid grid-cols-4 gap-2.5">
-            {RGB_LED_COLORS.map((key) => {
-              const isModeKey = !!key.label;
-              return (
-                <button
-                  key={key.id}
-                  onClick={() => handleSelectLedKey(key)}
-                  className={`h-11 rounded-xl flex flex-col items-center justify-center transition-all duration-150 active:scale-95 shadow-md border ${
-                    isModeKey
-                      ? isDarkMode
-                        ? 'bg-surface hover:bg-surface-hover border-surface-border text-white text-[10px] font-bold tracking-wider'
-                        : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 text-[10px] font-bold tracking-wider'
-                      : 'border-white/20 hover:brightness-110'
-                  }`}
-                  style={{
-                    backgroundColor: isModeKey ? undefined : key.displayColor,
-                    boxShadow: !isModeKey ? `0 2px 8px ${key.displayColor}33` : undefined,
-                  }}
-                  title={`${key.name} (0x${key.hexCode})`}
-                >
-                  {isModeKey ? (
-                    <span>{key.label}</span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-black/80 drop-shadow-sm font-mono">
-                      {key.name.slice(0, 3)}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div
-            className={`mt-3.5 text-[11px] text-center flex items-center justify-center gap-2 ${
-              isDarkMode ? 'text-accent-muted' : 'text-slate-500'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            Standard 24-Key RGB infrared mapping
-          </div>
+        <div className="flex flex-col items-center py-2">
+          <PhysicalWhiteRemote
+            onSelectColor={(hex) => onSelectColor(hex)}
+            isDarkMode={isDarkMode}
+          />
         </div>
       )}
     </div>
