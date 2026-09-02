@@ -118,9 +118,9 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
         </div>
 
         {/* Fan Hub Visual */}
-        <div className="relative flex flex-col items-center justify-center py-4">
+        <div className="relative flex flex-col items-center justify-center py-2">
           <div
-            className={`w-48 h-48 rounded-full border flex items-center justify-center transition-all duration-700 relative ${
+            className={`w-40 h-40 sm:w-44 sm:h-44 rounded-full border flex items-center justify-center transition-all duration-700 relative ${
               state.isOn
                 ? isDarkMode
                   ? 'shadow-[0_0_40px_rgba(197,245,250,0.15)] bg-surface/30 border-surface-border'
@@ -132,13 +132,13 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
           >
             {/* Spinning Fan Blade */}
             <div
-              className="w-36 h-36 flex items-center justify-center transition-transform"
+              className="w-32 h-32 flex items-center justify-center transition-transform"
               style={{
                 animation: state.isOn ? `spin ${animationDuration} linear infinite` : 'none',
               }}
             >
               <Fan
-                size={100}
+                size={86}
                 className={state.isOn ? 'text-sky-400' : isDarkMode ? 'text-zinc-600' : 'text-slate-400'}
               />
             </div>
