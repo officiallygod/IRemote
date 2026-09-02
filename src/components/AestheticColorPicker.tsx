@@ -4,6 +4,7 @@ import { RGB_LED_COLORS, SUNSET_LAMP_PRESETS, RgbColorKey } from '../data/rgbLed
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
 import { PhysicalWhiteRemote } from './PhysicalWhiteRemote';
+import { PhysicalOvalRemote } from './PhysicalOvalRemote';
 
 interface AestheticColorPickerProps {
   selectedColor: string;
@@ -284,11 +285,12 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
         </div>
       )}
 
-      {/* Tab Content 3: Physical 24-Key Remote Replica */}
+      {/* Tab Content 3: Physical Remote Replica (Oval Remote from user's photo) */}
       {activeTab === 'matrix' && (
-        <div className="flex flex-col items-center py-2">
-          <PhysicalWhiteRemote
-            onSelectColor={(hex) => onSelectColor(hex)}
+        <div className="flex flex-col items-center py-2 w-full">
+          <PhysicalOvalRemote
+            deviceName="Sunset Lamp"
+            onColorChange={(hex) => onSelectColor(hex)}
             isDarkMode={isDarkMode}
           />
         </div>
