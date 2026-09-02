@@ -117,9 +117,9 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
           : 'bg-white border-slate-200 text-slate-900 shadow-xl'
       }`}
     >
-      {/* Tab Switcher */}
+      {/* Segmented Tab Switcher (Zero crowding, crisp single-line layout) */}
       <div
-        className={`flex items-center justify-between p-1 rounded-2xl mb-4 border ${
+        className={`grid grid-cols-3 gap-1 p-1 rounded-2xl mb-4 border ${
           isDarkMode ? 'bg-[#121214] border-surface-border/60' : 'bg-slate-100 border-slate-200'
         }`}
       >
@@ -128,7 +128,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             hapticFeedback.tick();
             setActiveTab('sunset');
           }}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+          className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'sunset'
               ? isDarkMode
                 ? 'bg-surface text-white shadow-sm border border-surface-border'
@@ -138,8 +138,8 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Sparkles size={14} className="text-amber-400" />
-          Sunset Moods
+          <Sparkles size={13} className="text-amber-400 shrink-0" />
+          <span>Moods</span>
         </button>
 
         <button
@@ -147,7 +147,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             hapticFeedback.tick();
             setActiveTab('wheel');
           }}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+          className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'wheel'
               ? isDarkMode
                 ? 'bg-surface text-white shadow-sm border border-surface-border'
@@ -157,8 +157,8 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Palette size={14} className="text-sky-400" />
-          Color Wheel
+          <Palette size={13} className="text-sky-400 shrink-0" />
+          <span>Wheel</span>
         </button>
 
         <button
@@ -166,7 +166,7 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
             hapticFeedback.tick();
             setActiveTab('matrix');
           }}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+          className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'matrix'
               ? isDarkMode
                 ? 'bg-surface text-white shadow-sm border border-surface-border'
@@ -176,8 +176,8 @@ export const AestheticColorPicker: React.FC<AestheticColorPickerProps> = ({
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Sliders size={14} />
-          24-Key Remote
+          <Sliders size={13} className="shrink-0" />
+          <span>24-Key</span>
         </button>
       </div>
 

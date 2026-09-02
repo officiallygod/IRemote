@@ -87,8 +87,20 @@ export const PhysicalWhiteRemote: React.FC<PhysicalWhiteRemoteProps> = ({
   return (
     <div className="flex flex-col items-center w-full">
       {/* Address Switcher */}
-      <div className="flex items-center gap-1.5 mb-4 p-1 rounded-xl bg-surface border border-surface-border text-xs">
-        <span className="text-[11px] text-accent-muted px-2 font-medium">IR Address:</span>
+      <div
+        className={`flex items-center gap-1.5 mb-4 p-1 rounded-xl border text-xs transition-colors ${
+          isDarkMode
+            ? 'bg-surface border-surface-border text-white'
+            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
+        }`}
+      >
+        <span
+          className={`text-[11px] px-2 font-medium ${
+            isDarkMode ? 'text-accent-muted' : 'text-slate-500'
+          }`}
+        >
+          IR Address:
+        </span>
         {(['00F7', '00EF', 'FF00'] as const).map((addr) => (
           <button
             key={addr}
@@ -99,7 +111,9 @@ export const PhysicalWhiteRemote: React.FC<PhysicalWhiteRemoteProps> = ({
             className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold transition-all ${
               addressPrefix === addr
                 ? 'bg-sky-500 text-black shadow-sm'
-                : 'text-accent-muted hover:text-white'
+                : isDarkMode
+                ? 'text-accent-muted hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             0x{addr}
