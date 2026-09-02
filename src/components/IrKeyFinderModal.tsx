@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Play, Pause, CheckCircle2, RotateCcw, Zap, HelpCircle } from 'lucide-react';
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
-import { FIREPLACE_CANDIDATES, saveFireplacePowerCode, getSavedFireplacePowerCode } from '../data/fireplaceCodes';
+import { FIREPLACE_CANDIDATES, saveFireplacePowerCode, getSavedFireplacePowerCode, saveFireplaceTimerCode, getSavedFireplaceTimerCode } from '../data/fireplaceCodes';
 import { SUNSET_POWER_CANDIDATES, saveSunsetOffCode, getSavedSunsetOffCode } from '../data/rgbLedCodes';
 
 interface IrKeyFinderModalProps {
   isOpen: boolean;
   onClose: () => void;
   targetDevice: 'sunset' | 'fireplace';
+  initialSearchMode?: 'power' | 'timer';
   isDarkMode?: boolean;
   onCodeSaved?: (hex: string) => void;
 }
@@ -17,17 +18,29 @@ export const IrKeyFinderModal: React.FC<IrKeyFinderModalProps> = ({
   isOpen,
   onClose,
   targetDevice,
+  initialSearchMode = 'power',
   isDarkMode = true,
   onCodeSaved,
 }) => {
+  const [searchMode, setSearchMode] = useState<'power' | 'timer'>(initialSearchMode);
   const candidates = targetDevice === 'fireplace' ? FIREPLACE_CANDIDATES : SUNSET_POWER_CANDIDATES;
-  const initialSavedCode = targetDevice === 'fireplace' ? getSavedFireplacePowerCode() : getSavedSunsetOffCode();
+  
+  const getInitialCode = () => {
+    if (targetDevice === 'fireplace') {
+      return searchMode === 'timer' ? getSavedFireplaceTimerCode() : getSavedFireplacePowerCode();
+    }
+    return getSavedSunsetOffCode();
+  };
 
-  const [activeCode, setActiveCode] = useState<string>(initialSavedCode);
-  const [testedCodes, setTestedCodes] = useState<Set<string>>(new Set([initialSavedCode]));
+  const [activeCode, setActiveCode] = useState<string>(getInitialCode());
+  const [testedCodes, setTestedCodes] = useState<Set<string>>(new Set([getInitialCode()]));
   const [isScanning, setIsScanning] = useState(false);
   const [scanIndex, setScanIndex] = useState(0);
   const scanTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setActiveCode(getInitialCode());
+  }, [searchMode, targetDevice]);
 
   useEffect(() => {
     return () => {
@@ -38,7 +51,12 @@ export const IrKeyFinderModal: React.FC<IrKeyFinderModalProps> = ({
   if (!isOpen) return null;
 
   const deviceTitle = targetDevice === 'fireplace' ? 'Fireplace Humidifier' : 'Sunset Lamp';
-  const targetAction = targetDevice === 'fireplace' ? 'Power ON / OFF' : 'Power OFF / Toggle';
+  const targetAction =
+    targetDevice === 'fireplace'
+      ? searchMode === 'timer'
+        ? 'Timer (1h/3h/5h)'
+        : 'Power ON / OFF'
+      : 'Power OFF / Toggle';
 
   const handleTestCode = (hex: string) => {
     hapticFeedback.click();
@@ -50,7 +68,11 @@ export const IrKeyFinderModal: React.FC<IrKeyFinderModalProps> = ({
   const handleSaveCode = (hex: string) => {
     hapticFeedback.heavy();
     if (targetDevice === 'fireplace') {
-      saveFireplacePowerCode(hex);
+      if (searchMode === 'timer') {
+        saveFireplaceTimerCode(hex);
+      } else {
+        saveFireplacePowerCode(hex);
+      }
     } else {
       saveSunsetOffCode(hex);
     }
@@ -106,6 +128,44 @@ export const IrKeyFinderModal: React.FC<IrKeyFinderModalProps> = ({
             <X size={18} />
           </button>
         </div>
+
+        {/* Target Function Selector for Fireplace */}
+        {targetDevice === 'fireplace' && (
+          <div className="grid grid-cols-2 gap-2 mt-3 p-1 rounded-2xl bg-black/20 border border-white/5">
+            <button
+              onClick={() => {
+                hapticFeedback.tick();
+                setSearchMode('power');
+              }}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                searchMode === 'power'
+                  ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
+                  : isDarkMode
+                  ? 'text-zinc-400 hover:text-white'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Zap size={14} />
+              Power Key
+            </button>
+            <button
+              onClick={() => {
+                hapticFeedback.tick();
+                setSearchMode('timer');
+              }}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                searchMode === 'timer'
+                  ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
+                  : isDarkMode
+                  ? 'text-zinc-400 hover:text-white'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🕒</span>
+              Timer Key
+            </button>
+          </div>
+        )}
 
         {/* Instructions */}
         <div className="py-3 text-xs leading-relaxed text-accent-muted flex items-start gap-2">

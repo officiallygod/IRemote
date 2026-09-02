@@ -70,6 +70,7 @@ export const FIREPLACE_CODES = {
 };
 
 const STORAGE_KEY_POWER = 'iremote_fireplace_confirmed_power';
+const STORAGE_KEY_TIMER = 'iremote_fireplace_confirmed_timer';
 
 export function getSavedFireplacePowerCode(): string {
   return localStorage.getItem(STORAGE_KEY_POWER) || FIREPLACE_CANDIDATES[0].hex;
@@ -77,4 +78,12 @@ export function getSavedFireplacePowerCode(): string {
 
 export function saveFireplacePowerCode(hex: string): void {
   localStorage.setItem(STORAGE_KEY_POWER, hex.toUpperCase());
+}
+
+export function getSavedFireplaceTimerCode(): string {
+  return localStorage.getItem(STORAGE_KEY_TIMER) || 'C2E27887';
+}
+
+export function saveFireplaceTimerCode(hex: string): void {
+  localStorage.setItem(STORAGE_KEY_TIMER, hex.toUpperCase());
 }

@@ -219,6 +219,88 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     laptopScreen.rotation.x = -0.2;
     masterGroup.add(laptopScreen);
 
+    // iPad / Tablet on Desk next to laptop (Requested by user)
+    const ipadBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.008, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 })
+    );
+    ipadBase.position.set(-0.7, 0.755, -0.38);
+    ipadBase.rotation.y = 0.12;
+    masterGroup.add(ipadBase);
+
+    const ipadScreen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.145, 0.205),
+      new THREE.MeshBasicMaterial({ color: isDarkMode ? 0x0284c7 : 0x38bdf8 })
+    );
+    ipadScreen.position.set(-0.7, 0.761, -0.38);
+    ipadScreen.rotation.x = -Math.PI / 2;
+    ipadScreen.rotation.z = 0.12;
+    masterGroup.add(ipadScreen);
+
+    // Ergonomic Racing Gaming Chair next to table (Requested by user)
+    const gamingChairGroup = new THREE.Group();
+    gamingChairGroup.position.set(-0.88, 0, 0.18);
+    gamingChairGroup.rotation.y = -0.35; // Angled facing the desk
+
+    // 5-Star Caster Base
+    const chairBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.03, 5),
+      metalMat
+    );
+    chairBase.position.y = 0.04;
+    gamingChairGroup.add(chairBase);
+
+    // Gas-lift piston cylinder
+    const piston = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.022, 0.32),
+      metalMat
+    );
+    piston.position.y = 0.2;
+    gamingChairGroup.add(piston);
+
+    // Bucket seat cushion with side wings
+    const chairLeatherMat = new THREE.MeshStandardMaterial({
+      color: 0x14161a,
+      roughness: 0.65,
+    });
+    const racingStripeMat = new THREE.MeshStandardMaterial({
+      color: 0x06b6d4, // Vibrant racing cyan stripe
+      roughness: 0.4,
+    });
+
+    const seatCushion = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.07, 0.36), chairLeatherMat);
+    seatCushion.position.y = 0.39;
+    gamingChairGroup.add(seatCushion);
+
+    // Seat side bolsters
+    const bolsterL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.34), racingStripeMat);
+    bolsterL.position.set(-0.16, 0.43, 0);
+    gamingChairGroup.add(bolsterL);
+    const bolsterR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.34), racingStripeMat);
+    bolsterR.position.set(0.16, 0.43, 0);
+    gamingChairGroup.add(bolsterR);
+
+    // Tall Ergonomic Racing Backrest
+    const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.48, 0.05), chairLeatherMat);
+    backrest.position.set(0, 0.66, 0.16);
+    backrest.rotation.x = -0.1;
+    gamingChairGroup.add(backrest);
+
+    // Racing Headrest Cushion
+    const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.05), racingStripeMat);
+    headrest.position.set(0, 0.88, 0.19);
+    gamingChairGroup.add(headrest);
+
+    // Dual 3D Armrests
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.16, 0.16), metalMat);
+    armL.position.set(-0.2, 0.52, 0.04);
+    gamingChairGroup.add(armL);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.16, 0.16), metalMat);
+    armR.position.set(0.2, 0.52, 0.04);
+    gamingChairGroup.add(armR);
+
+    masterGroup.add(gamingChairGroup);
+
     // 8. Dorm Bed
     const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.28, 2.0), woodMat);
     bedFrame.position.set(0.9, 0.14, -0.6);
@@ -227,6 +309,15 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.18, 1.9), bedMat);
     mattress.position.set(0.9, 0.32, -0.6);
     masterGroup.add(mattress);
+
+    // Matte Black Quilt / Blanket draped on the foot of the bed (Requested by user)
+    const blackBlanketMat = new THREE.MeshStandardMaterial({
+      color: 0x121316,
+      roughness: 0.95,
+    });
+    const blackBlanket = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.06, 0.82), blackBlanketMat);
+    blackBlanket.position.set(0.9, 0.38, -0.12);
+    masterGroup.add(blackBlanket);
 
     const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.38), pillowMat);
     pillow.position.set(0.9, 0.44, -1.35);
@@ -329,26 +420,112 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     }
 
     // -------------------------------------------------------------
-    // APPLIANCE 4: Flame Humidifier (Fireplace box on credenza)
+    // APPLIANCE 4: Flame Humidifier (Fireplace box on table)
     // -------------------------------------------------------------
-    const fireplaceBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.18, 0.16),
-      new THREE.MeshStandardMaterial({ color: 0x181a1d, roughness: 0.4 })
-    );
-    fireplaceBox.position.set(-0.35, 0.81, -0.4);
-    masterGroup.add(fireplaceBox);
+    const fireplaceGroup = new THREE.Group();
+    fireplaceGroup.position.set(-0.35, 0.81, -0.4);
 
-    // Rising animated flame / mist tongue
+    // 1. Obsidian Outer Chassis (Matches photo)
+    const fireplaceChassis = new THREE.Mesh(
+      new THREE.BoxGeometry(0.44, 0.17, 0.16),
+      new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.35, metalness: 0.2 })
+    );
+    fireplaceGroup.add(fireplaceChassis);
+
+    // 2. Front Panoramic Glass Window
+    const fpGlassMat = new THREE.MeshStandardMaterial({
+      color: 0x050608,
+      roughness: 0.1,
+      metalness: 0.9,
+      transparent: true,
+      opacity: 0.85,
+    });
+    const fpGlass = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.11, 0.01), fpGlassMat);
+    fpGlass.position.set(0, -0.01, 0.082);
+    fireplaceGroup.add(fpGlass);
+
+    // 3. Glowing Ember Bed inside the chamber
+    const emberMat = new THREE.MeshBasicMaterial({
+      color: isFireplaceOn ? 0xef4444 : 0x1a1a1e,
+    });
+    const emberBed = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.015, 0.08), emberMat);
+    emberBed.position.set(0, -0.045, 0.04);
+    fireplaceGroup.add(emberBed);
+
+    // 4. Miniature Charred Wood Logs inside the chamber
+    const logMat = new THREE.MeshStandardMaterial({ color: 0x1e2025, roughness: 0.9 });
+    const fpLog1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), logMat);
+    fpLog1.rotation.z = Math.PI / 2;
+    fpLog1.position.set(0, -0.03, 0.04);
+    fireplaceGroup.add(fpLog1);
+
+    const fpLog2 = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.14, 6), logMat);
+    fpLog2.rotation.z = Math.PI / 3;
+    fpLog2.position.set(0.04, -0.02, 0.05);
+    fireplaceGroup.add(fpLog2);
+
+    // 5. Top Emitter Slot (Glowing horizontal slit)
+    const slotMat = new THREE.MeshBasicMaterial({
+      color: isFireplaceOn ? 0xfef08a : 0x08090a,
+    });
+    const fpSlot = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.005, 0.02), slotMat);
+    fpSlot.position.set(0, 0.086, 0);
+    fireplaceGroup.add(fpSlot);
+
+    // 6. Rising animated flame mist tongue
     const flameMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(fireplaceColor),
       transparent: true,
       opacity: isFireplaceOn ? 0.85 : 0.0,
+      side: THREE.DoubleSide,
     });
-    const flameMesh = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 12), flameMat);
-    flameMesh.position.set(-0.35, 0.98, -0.4);
+    const flameMesh = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.24, 12), flameMat);
+    flameMesh.position.set(0, 0.19, 0);
     flameMesh.rotation.x = Math.PI;
-    masterGroup.add(flameMesh);
+    fireplaceGroup.add(flameMesh);
     fireplaceFlameRef.current = flameMesh;
+
+    // Chamber ambient light cast
+    const fpPointLight = new THREE.PointLight(new THREE.Color(fireplaceColor), isFireplaceOn ? 1.8 : 0, 1.5);
+    fpPointLight.position.set(0, 0.1, 0.1);
+    fireplaceGroup.add(fpPointLight);
+
+    masterGroup.add(fireplaceGroup);
+
+    // -------------------------------------------------------------
+    // APPLIANCE 5: Wall-Mounted Smart TV above the Fireplace (Requested by user)
+    // -------------------------------------------------------------
+    const tvGroup = new THREE.Group();
+    // Mounted directly on back wall (z = -1.74) centered above fireplace (x = -0.35, y = 1.45)
+    tvGroup.position.set(-0.35, 1.45, -1.74);
+
+    // Wall Bracket
+    const tvBracket = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.03), metalMat);
+    tvBracket.position.z = 0.015;
+    tvGroup.add(tvBracket);
+
+    // 50" Slim Obsidian Frame
+    const tvFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.72, 0.44, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x0a0b0d, roughness: 0.3, metalness: 0.8 })
+    );
+    tvFrame.position.z = 0.035;
+    tvGroup.add(tvFrame);
+
+    // Glossy OLED Display Screen
+    const tvScreenMat = new THREE.MeshBasicMaterial({
+      color: isDarkMode ? 0x0f172a : 0x1e293b,
+    });
+    const tvScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.4), tvScreenMat);
+    tvScreen.position.z = 0.046;
+    tvGroup.add(tvScreen);
+
+    // Ambient TV Backlight casting glow onto the wall
+    const tvBacklight = new THREE.PointLight(0x38bdf8, isDarkMode ? 0.9 : 0.4, 1.4);
+    tvBacklight.position.set(0, 0, 0.01);
+    tvGroup.add(tvBacklight);
+
+    masterGroup.add(tvGroup);
 
     // 9. Interactive Pointer Drag & Rotation
     const handlePointerDown = (e: PointerEvent) => {

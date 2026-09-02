@@ -67,24 +67,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           isDarkMode ? 'bg-[#121214]/85 border-white/5 text-white' : 'bg-white/85 border-slate-200 text-slate-900'
         }`}
       >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-amber-400 text-black flex items-center justify-center font-black text-sm shadow-md">
-            iR
-          </div>
-          <div>
-            <h1 className="text-base font-extrabold tracking-tight flex items-center gap-1.5">
-              <span>IRemote</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-400/15 text-cyan-400 font-mono font-bold">
-                Poco X7 Pro
-              </span>
-            </h1>
-          </div>
-        </div>
-
+        {/* Karlsruhe Weather Chip on left */}
         <div className="flex items-center gap-2">
-          {/* Karlsruhe Clean Temp Chip */}
           <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
               isDarkMode
                 ? 'bg-surface border-surface-border text-white'
                 : 'bg-slate-100 border-slate-200 text-slate-800 shadow-sm'
@@ -93,7 +79,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="w-2 h-2 rounded-full bg-amber-400" />
             <span>{karlsruheTemp}</span>
           </div>
+        </div>
 
+        <div className="flex items-center gap-2">
           {/* Theme Toggle Button */}
           <button
             onClick={() => {

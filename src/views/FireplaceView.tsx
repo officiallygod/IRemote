@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Power, Wind, Clock, Sparkles, Zap } from 'lucide-react';
 import { FireplaceFlameVisual } from '../components/FireplaceFlameVisual';
 import { IrKeyFinderModal } from '../components/IrKeyFinderModal';
-import { FIREPLACE_CODES, getSavedFireplacePowerCode } from '../data/fireplaceCodes';
+import { FIREPLACE_CODES, getSavedFireplacePowerCode, getSavedFireplaceTimerCode } from '../data/fireplaceCodes';
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
 
@@ -40,7 +40,9 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
   isDarkMode = true,
 }) => {
   const [showKeyHunter, setShowKeyHunter] = useState(false);
+  const [hunterMode, setHunterMode] = useState<'power' | 'timer'>('power');
   const [confirmedPowerCode, setConfirmedPowerCode] = useState(getSavedFireplacePowerCode());
+  const [confirmedTimerCode, setConfirmedTimerCode] = useState(getSavedFireplaceTimerCode());
 
   // Button 1: ON / OFF (Top-Left)
   const handleTogglePower = () => {
@@ -64,7 +66,7 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
     const curIdx = TIMER_STEPS.indexOf(state.timer);
     const nextTimer = TIMER_STEPS[(curIdx + 1) % TIMER_STEPS.length];
     onUpdateState({ timer: nextTimer });
-    irBlaster.sendNec(FIREPLACE_CODES.candidates[3].hex, `Timer: ${nextTimer}`, 'Fireplace');
+    irBlaster.sendNec(confirmedTimerCode, `Timer: ${nextTimer}`, 'Fireplace');
   };
 
   // Button 4: Toggle fireplace light effect (Bottom-Right) -> 0xC2E238C7 (Confirmed working!)
@@ -140,6 +142,7 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
           isSmokeOn={state.isSmokeOn}
           flameColor={state.flameColor}
           flameColorName={state.flameColorName}
+          timer={state.timer}
           onTogglePower={handleTogglePower}
           isDarkMode={isDarkMode}
         />
@@ -250,8 +253,12 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
         isOpen={showKeyHunter}
         onClose={() => setShowKeyHunter(false)}
         targetDevice="fireplace"
+        initialSearchMode={hunterMode}
         isDarkMode={isDarkMode}
-        onCodeSaved={(newPowerCode) => setConfirmedPowerCode(newPowerCode)}
+        onCodeSaved={(code) => {
+          setConfirmedPowerCode(getSavedFireplacePowerCode());
+          setConfirmedTimerCode(getSavedFireplaceTimerCode());
+        }}
       />
     </div>
   );
