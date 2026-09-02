@@ -97,7 +97,7 @@ public class IrBlasterPlugin extends Plugin {
         }
 
         int frequency = call.getInt("frequency", 38000);
-        int repeatCount = call.getInt("repeatCount", 2); // Default 2 repeats matching IrCode Finder CSV
+        int repeatCount = call.getInt("repeatCount", 1); // Exactly 1 frame per key tap to prevent double toggling
 
         try {
             int[] pattern = buildNecPatternMsb(hex, repeatCount);

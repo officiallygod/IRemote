@@ -6,6 +6,10 @@ import { FanControllerView } from './views/FanControllerView';
 import { FireplaceView, FireplaceState } from './views/FireplaceView';
 import { IrSignalIndicator } from './components/IrSignalIndicator';
 import { CustomCodeEditorModal, CustomKey } from './components/CustomCodeEditorModal';
+import { irBlaster } from './services/irBlaster';
+import { FAN_CODES } from './data/fanCodes';
+import { RGB_LED_CONTROLS } from './data/rgbLedCodes';
+import { FIREPLACE_CODES } from './data/fireplaceCodes';
 
 type ActiveView = 'dashboard' | 'sunset-lamp' | 'bedside-lamp' | 'smart-fan' | 'fireplace';
 
@@ -158,10 +162,26 @@ export default function App() {
             ledStripState={bedsideState}
             fanState={fanState}
             fireplaceState={fireplaceState}
-            onToggleSunset={() => setSunsetState((prev) => ({ ...prev, isOn: !prev.isOn }))}
-            onToggleLedStrip={() => setBedsideState((prev) => ({ ...prev, isOn: !prev.isOn }))}
-            onToggleFan={() => setFanState((prev) => ({ ...prev, isOn: !prev.isOn }))}
-            onToggleFireplace={() => setFireplaceState((prev) => ({ ...prev, isOn: !prev.isOn }))}
+            onToggleSunset={() => {
+              const next = !sunsetState.isOn;
+              setSunsetState((prev) => ({ ...prev, isOn: next }));
+              irBlaster.sendNec(next ? RGB_LED_CONTROLS.powerOn.hex : RGB_LED_CONTROLS.powerOff.hex, next ? 'Power ON' : 'Power OFF', 'Sunset Lamp');
+            }}
+            onToggleLedStrip={() => {
+              const next = !bedsideState.isOn;
+              setBedsideState((prev) => ({ ...prev, isOn: next }));
+              irBlaster.sendNec(next ? RGB_LED_CONTROLS.powerOn.hex : RGB_LED_CONTROLS.powerOff.hex, next ? 'Power ON' : 'Power OFF', 'Bedside Lamp');
+            }}
+            onToggleFan={() => {
+              const next = !fanState.isOn;
+              setFanState((prev) => ({ ...prev, isOn: next }));
+              irBlaster.sendNec(FAN_CODES.power.hex, next ? 'Power ON' : 'Power OFF', 'Smart Fan');
+            }}
+            onToggleFireplace={() => {
+              const next = !fireplaceState.isOn;
+              setFireplaceState((prev) => ({ ...prev, isOn: next }));
+              irBlaster.sendNec(FIREPLACE_CODES.powerCandidates[0].hex, next ? 'Power ON' : 'Power OFF', 'Fireplace');
+            }}
           />
         )}
 

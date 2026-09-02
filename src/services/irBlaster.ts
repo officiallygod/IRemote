@@ -42,9 +42,9 @@ export const irBlaster = {
     const signal = encodeNecHex(cleanHex);
     let isNative = false;
 
-    // Throttle duplicate spam within 80ms
+    // Throttle duplicate spam within 350ms to prevent touch/click double events
     const now = Date.now();
-    if (now - lastTransmitTime < 80) {
+    if (now - lastTransmitTime < 350) {
       return false;
     }
     lastTransmitTime = now;
@@ -54,12 +54,12 @@ export const irBlaster = {
 
     try {
       if (Capacitor.isNativePlatform()) {
-        // Preferred: native multi-frame hex blaster
+        // Preferred: native single-frame hex blaster (repeatCount: 1)
         if (typeof (NativeIrBlaster as any).transmitHex === 'function') {
           await (NativeIrBlaster as any).transmitHex({
             hex: cleanHex,
             frequency: 38000,
-            repeatCount: 2,
+            repeatCount: 1,
           });
           isNative = true;
         } else {
