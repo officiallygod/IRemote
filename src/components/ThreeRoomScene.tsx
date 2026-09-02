@@ -310,13 +310,17 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     mattress.position.set(0.9, 0.32, -0.6);
     masterGroup.add(mattress);
 
-    // Matte Black Quilt / Blanket draped on the foot of the bed (Requested by user)
+    // Matte Black Quilt / Blanket draped on foot of the bed (Rock solid - elevated to eliminate Z-fighting!)
     const blackBlanketMat = new THREE.MeshStandardMaterial({
       color: 0x121316,
       roughness: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     });
-    const blackBlanket = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.06, 0.82), blackBlanketMat);
-    blackBlanket.position.set(0.9, 0.38, -0.12);
+    const blackBlanket = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.07, 0.85), blackBlanketMat);
+    // Mattress top is y = 0.41, placing blanket center at y = 0.445 gives clean 0.07 thickness above mattress
+    blackBlanket.position.set(0.9, 0.445, -0.12);
     masterGroup.add(blackBlanket);
 
     const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.38), pillowMat);
@@ -420,94 +424,120 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     }
 
     // -------------------------------------------------------------
-    // APPLIANCE 4: Flame Humidifier (Fireplace box on table)
+    // APPLIANCE 4: Grand Architectural Fireplace Hearth (Big size sitting on floor under the TV!)
     // -------------------------------------------------------------
     const fireplaceGroup = new THREE.Group();
-    fireplaceGroup.position.set(-0.35, 0.81, -0.4);
+    // Positioned directly against the back wall (z = -1.58), sitting on the floor under the TV (x = -0.35)
+    fireplaceGroup.position.set(-0.35, 0.26, -1.58);
 
-    // 1. Obsidian Outer Chassis (Matches photo)
-    const fireplaceChassis = new THREE.Mesh(
-      new THREE.BoxGeometry(0.44, 0.17, 0.16),
-      new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.35, metalness: 0.2 })
+    // 1. Heavy Obsidian / Granite Hearth Mantel Base (Grand Presence matching user photo)
+    const fpMantelBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.92, 0.52, 0.26),
+      new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.4, metalness: 0.15 })
     );
-    fireplaceGroup.add(fireplaceChassis);
+    fireplaceGroup.add(fpMantelBase);
 
-    // 2. Front Panoramic Glass Window
+    // Top Mantel Shelf / Ledge
+    const fpMantelLedge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.98, 0.04, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x181a1f, roughness: 0.3, metalness: 0.2 })
+    );
+    fpMantelLedge.position.set(0, 0.27, 0.01);
+    fireplaceGroup.add(fpMantelLedge);
+
+    // 2. Deep Panoramic Firebox Chamber (Recessed dark cavity)
+    const fpCavity = new THREE.Mesh(
+      new THREE.BoxGeometry(0.74, 0.34, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x050608, roughness: 0.9 })
+    );
+    fpCavity.position.set(0, -0.02, 0.05);
+    fireplaceGroup.add(fpCavity);
+
+    // 3. Front Panoramic Tinted Glass Pane
     const fpGlassMat = new THREE.MeshStandardMaterial({
-      color: 0x050608,
-      roughness: 0.1,
-      metalness: 0.9,
+      color: 0x08090c,
+      roughness: 0.05,
+      metalness: 0.95,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.82,
     });
-    const fpGlass = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.11, 0.01), fpGlassMat);
-    fpGlass.position.set(0, -0.01, 0.082);
+    const fpGlass = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.32, 0.01), fpGlassMat);
+    fpGlass.position.set(0, -0.02, 0.135);
     fireplaceGroup.add(fpGlass);
 
-    // 3. Glowing Ember Bed inside the chamber
+    // 4. Broad Glowing Molten Coal & Ember Bed across the full hearth
     const emberMat = new THREE.MeshBasicMaterial({
-      color: isFireplaceOn ? 0xef4444 : 0x1a1a1e,
+      color: isFireplaceOn ? 0xef4444 : 0x16171a,
     });
-    const emberBed = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.015, 0.08), emberMat);
-    emberBed.position.set(0, -0.045, 0.04);
+    const emberBed = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.02, 0.14), emberMat);
+    emberBed.position.set(0, -0.16, 0.06);
     fireplaceGroup.add(emberBed);
 
-    // 4. Miniature Charred Wood Logs inside the chamber
-    const logMat = new THREE.MeshStandardMaterial({ color: 0x1e2025, roughness: 0.9 });
-    const fpLog1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), logMat);
+    // 5. Stacked 3D Charred Oak Firewood Logs inside the fireplace
+    const logMat = new THREE.MeshStandardMaterial({ color: 0x22242b, roughness: 0.9 });
+
+    // Center horizontal charred log
+    const fpLog1 = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.44, 8), logMat);
     fpLog1.rotation.z = Math.PI / 2;
-    fpLog1.position.set(0, -0.03, 0.04);
+    fpLog1.position.set(0, -0.13, 0.06);
     fireplaceGroup.add(fpLog1);
 
-    const fpLog2 = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.14, 6), logMat);
-    fpLog2.rotation.z = Math.PI / 3;
-    fpLog2.position.set(0.04, -0.02, 0.05);
+    // Left crossed branch
+    const fpLog2 = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.28, 8), logMat);
+    fpLog2.rotation.z = Math.PI / 3.2;
+    fpLog2.position.set(-0.12, -0.1, 0.07);
     fireplaceGroup.add(fpLog2);
 
-    // 5. Top Emitter Slot (Glowing horizontal slit)
+    // Right crossed branch
+    const fpLog3 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.28, 8), logMat);
+    fpLog3.rotation.z = -Math.PI / 3.5;
+    fpLog3.position.set(0.14, -0.09, 0.07);
+    fireplaceGroup.add(fpLog3);
+
+    // 6. Top Exhaust Slot on the Mantel Ledge (Glowing slit)
     const slotMat = new THREE.MeshBasicMaterial({
-      color: isFireplaceOn ? 0xfef08a : 0x08090a,
+      color: isFireplaceOn ? 0xfef08a : 0x090a0d,
     });
-    const fpSlot = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.005, 0.02), slotMat);
-    fpSlot.position.set(0, 0.086, 0);
+    const fpSlot = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.008, 0.03), slotMat);
+    fpSlot.position.set(0, 0.295, 0.02);
     fireplaceGroup.add(fpSlot);
 
-    // 6. Rising animated flame mist tongue
+    // 7. Rising Animated Volumetric Leaping Flame Mist
     const flameMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(fireplaceColor),
       transparent: true,
-      opacity: isFireplaceOn ? 0.85 : 0.0,
+      opacity: isFireplaceOn ? 0.88 : 0.0,
       side: THREE.DoubleSide,
     });
-    const flameMesh = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.24, 12), flameMat);
-    flameMesh.position.set(0, 0.19, 0);
+    const flameMesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.36, 16), flameMat);
+    flameMesh.position.set(0, 0.46, 0.02);
     flameMesh.rotation.x = Math.PI;
     fireplaceGroup.add(flameMesh);
     fireplaceFlameRef.current = flameMesh;
 
-    // Chamber ambient light cast
-    const fpPointLight = new THREE.PointLight(new THREE.Color(fireplaceColor), isFireplaceOn ? 1.8 : 0, 1.5);
-    fpPointLight.position.set(0, 0.1, 0.1);
+    // Rich ambient firelight cast onto the floor and room
+    const fpPointLight = new THREE.PointLight(new THREE.Color(fireplaceColor), isFireplaceOn ? 3.0 : 0, 3.2);
+    fpPointLight.position.set(0, 0.15, 0.25);
     fireplaceGroup.add(fpPointLight);
 
     masterGroup.add(fireplaceGroup);
 
     // -------------------------------------------------------------
-    // APPLIANCE 5: Wall-Mounted Smart TV above the Fireplace (Requested by user)
+    // APPLIANCE 5: Wall-Mounted Smart TV Directly Above the Fireplace (1:1 with photo!)
     // -------------------------------------------------------------
     const tvGroup = new THREE.Group();
-    // Mounted directly on back wall (z = -1.74) centered above fireplace (x = -0.35, y = 1.45)
-    tvGroup.position.set(-0.35, 1.45, -1.74);
+    // Mounted directly on the back wall (z = -1.74) centered right above the fireplace (x = -0.35, y = 1.28)
+    tvGroup.position.set(-0.35, 1.28, -1.74);
 
     // Wall Bracket
-    const tvBracket = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.03), metalMat);
+    const tvBracket = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.03), metalMat);
     tvBracket.position.z = 0.015;
     tvGroup.add(tvBracket);
 
-    // 50" Slim Obsidian Frame
+    // 55" Large OLED Obsidian Frame
     const tvFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.72, 0.44, 0.02),
-      new THREE.MeshStandardMaterial({ color: 0x0a0b0d, roughness: 0.3, metalness: 0.8 })
+      new THREE.BoxGeometry(0.86, 0.52, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x0a0b0d, roughness: 0.25, metalness: 0.85 })
     );
     tvFrame.position.z = 0.035;
     tvGroup.add(tvFrame);
@@ -516,12 +546,12 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     const tvScreenMat = new THREE.MeshBasicMaterial({
       color: isDarkMode ? 0x0f172a : 0x1e293b,
     });
-    const tvScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.4), tvScreenMat);
+    const tvScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.48), tvScreenMat);
     tvScreen.position.z = 0.046;
     tvGroup.add(tvScreen);
 
-    // Ambient TV Backlight casting glow onto the wall
-    const tvBacklight = new THREE.PointLight(0x38bdf8, isDarkMode ? 0.9 : 0.4, 1.4);
+    // Ambient TV Backlight casting cinematic glow onto the wall
+    const tvBacklight = new THREE.PointLight(0x38bdf8, isDarkMode ? 1.0 : 0.4, 1.6);
     tvBacklight.position.set(0, 0, 0.01);
     tvGroup.add(tvBacklight);
 
