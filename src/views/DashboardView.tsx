@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, LayoutGrid, Sun, Moon, Sliders } from 'lucide-react';
-import { RoomIsometricCard } from '../components/RoomIsometricCard';
+import { ThreeRoomScene } from '../components/ThreeRoomScene';
 import { DeviceCard } from '../components/DeviceCard';
 import { hapticFeedback } from '../services/haptics';
 import { fetchKarlsruheWeather } from '../services/weatherService';
@@ -159,18 +159,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </div>
 
-        {/* 3D Isometric Room Scene Card */}
+        {/* Interactive 3D Room Scene (Bruno Simon isometric style, procedural Three.js) */}
         <div>
-          <RoomIsometricCard
-            roomName={selectedZone}
-            activeDevicesCount={activeCount}
+          <ThreeRoomScene
             isDarkMode={isDarkMode}
             isSunsetOn={sunsetState.isOn}
             isBedsideOn={ledStripState.isOn}
-            temperature={karlsruheTemp}
-            activeMode={sunsetState.moodName}
+            isFanOn={fanState.isOn}
+            isFireplaceOn={fireplaceState.isOn}
+            sunsetColor={sunsetState.color}
+            fireplaceColor={fireplaceState.flameColor}
+            fanSpeed={fanState.speed}
             onToggleSunset={onToggleSunset}
             onToggleBedside={onToggleLedStrip}
+            onToggleFan={onToggleFan}
+            onToggleFireplace={onToggleFireplace}
+            onOpenDevice={onOpenDevice}
           />
         </div>
 
