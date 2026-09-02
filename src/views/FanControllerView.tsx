@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Fan, Power, Wind, Compass, Clock, Code2 } from 'lucide-react';
+import { ArrowLeft, Power, Wind, Clock, Compass, Code } from 'lucide-react';
 import { ArcSlider } from '../components/ArcSlider';
 import { FAN_CODES } from '../data/fanCodes';
 import { irBlaster } from '../services/irBlaster';
@@ -14,12 +14,12 @@ interface FanControllerViewProps {
     timer: string;
     mode: string;
   };
-  onUpdateState: (newState: Partial<FanControllerViewProps['state']>) => void;
+  onUpdateState: (update: Partial<FanControllerViewProps['state']>) => void;
   isDarkMode?: boolean;
 }
 
 const TIMER_STEPS = ['Off', '1h', '2h', '4h', '8h'];
-const WIND_MODES = ['Normal', 'Breeze', 'Sleep'];
+const WIND_MODES = ['Normal', 'Natural', 'Sleep'];
 
 export const FanControllerView: React.FC<FanControllerViewProps> = ({
   onBack,
@@ -30,6 +30,7 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
   const [showCodes, setShowCodes] = useState(false);
 
   const handleTogglePower = () => {
+    hapticFeedback.click();
     const next = !state.isOn;
     onUpdateState({ isOn: next });
     irBlaster.sendNec(FAN_CODES.power.hex, next ? 'Power ON' : 'Power OFF', 'Smart Fan');
@@ -41,12 +42,14 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
   };
 
   const handleToggleSwing = () => {
+    hapticFeedback.click();
     const nextSwing = !state.isSwinging;
     onUpdateState({ isSwinging: nextSwing });
     irBlaster.sendNec(FAN_CODES.swing.hex, nextSwing ? 'Swing ON' : 'Swing OFF', 'Smart Fan');
   };
 
   const handleCycleTimer = () => {
+    hapticFeedback.click();
     const idx = TIMER_STEPS.indexOf(state.timer);
     const nextTimer = TIMER_STEPS[(idx + 1) % TIMER_STEPS.length];
     onUpdateState({ timer: nextTimer });
@@ -54,69 +57,71 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
   };
 
   const handleCycleMode = () => {
+    hapticFeedback.click();
     const idx = WIND_MODES.indexOf(state.mode);
     const nextMode = WIND_MODES[(idx + 1) % WIND_MODES.length];
     onUpdateState({ mode: nextMode });
     irBlaster.sendNec(FAN_CODES.mode.hex, `Mode: ${nextMode}`, 'Smart Fan');
   };
 
-  const animationDuration = state.isOn ? `${Math.max(0.4, 2.5 - state.speed * 0.45)}s` : '0s';
+  // Speed-dependent animation duration
+  const animationDuration =
+    state.speed === 1 ? '1.8s' : state.speed === 2 ? '1.0s' : '0.5s';
 
   return (
-    <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
-      <div>
-        {/* Top Navigation */}
-        <div className="flex items-center justify-between mb-5">
-          <button
-            onClick={() => {
-              hapticFeedback.click();
-              onBack();
-            }}
-            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
-              isDarkMode
-                ? 'bg-surface border-surface-border text-white/80 hover:text-white'
-                : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
-            }`}
-            aria-label="Back"
-          >
-            <ArrowLeft size={18} />
-          </button>
+    <div className="flex flex-col w-full h-screen overflow-hidden select-none max-w-md mx-auto relative">
+      {/* 1. Persistent Top Navigation Bar (Stays completely frozen in place) */}
+      <header
+        className={`shrink-0 z-30 pt-12 pb-3 px-5 backdrop-blur-xl border-b transition-colors flex items-center justify-between ${
+          isDarkMode ? 'bg-[#121214]/85 border-white/5 text-white' : 'bg-white/85 border-slate-200 text-slate-900'
+        }`}
+      >
+        <button
+          onClick={() => {
+            hapticFeedback.click();
+            onBack();
+          }}
+          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
+            isDarkMode
+              ? 'bg-surface border-surface-border text-white/80 hover:text-white'
+              : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
+          }`}
+          aria-label="Back to Dashboard"
+        >
+          <ArrowLeft size={18} />
+        </button>
 
-          <div className="text-center">
-            <span
-              className={`text-[10px] font-semibold tracking-widest uppercase block ${
-                isDarkMode ? 'text-accent-muted' : 'text-slate-500'
-              }`}
-            >
-              Dorm Room
-            </span>
-            <h2
-              className={`text-base font-extrabold tracking-tight ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}
-            >
-              Smart Fan
-            </h2>
-          </div>
-
-          <button
-            onClick={() => {
-              hapticFeedback.tick();
-              setShowCodes(!showCodes);
-            }}
-            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
-              showCodes
-                ? 'bg-sky-400 text-black border-sky-400 shadow-sm'
-                : isDarkMode
-                ? 'bg-surface border-surface-border text-accent-muted hover:text-white'
-                : 'bg-white border-slate-200 text-slate-600 shadow-sm'
+        <div className="text-center">
+          <span
+            className={`text-[10px] font-semibold tracking-widest uppercase block ${
+              isDarkMode ? 'text-accent-muted' : 'text-slate-500'
             }`}
-            title="Show NEC Codes"
           >
-            <Code2 size={18} />
-          </button>
+            Dorm Room
+          </span>
+          <h2 className="text-base font-extrabold tracking-tight">Smart Fan</h2>
         </div>
 
+        <button
+          onClick={() => {
+            hapticFeedback.tick();
+            setShowCodes(!showCodes);
+          }}
+          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+            showCodes
+              ? 'bg-sky-400 text-black border-sky-400 shadow-sm'
+              : isDarkMode
+              ? 'bg-surface border-surface-border text-accent-muted hover:text-white'
+              : 'bg-white border-slate-200 text-slate-600 shadow-sm'
+          }`}
+          title="IR Codes Inspector"
+        >
+          <Code size={18} />
+        </button>
+      </header>
+
+      {/* 2. Scrollable Body Content (Scrolls smoothly underneath the persistent nav bar) */}
+      <main className="flex-1 overflow-y-auto px-5 pt-3 pb-36 space-y-4 overscroll-contain">
         {/* Fan Hub Visual */}
         <div className="relative flex flex-col items-center justify-center py-2">
           <div
@@ -137,10 +142,13 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
                 animation: state.isOn ? `spin ${animationDuration} linear infinite` : 'none',
               }}
             >
-              <Fan
-                size={86}
-                className={state.isOn ? 'text-sky-400' : isDarkMode ? 'text-zinc-600' : 'text-slate-400'}
-              />
+              <svg viewBox="0 0 100 100" className="w-24 h-24 text-sky-400 fill-current">
+                {/* 3 aerodynamic curved blades */}
+                <path d="M50 50 C45 35 30 20 50 10 C65 20 55 35 50 50 Z" />
+                <path d="M50 50 C65 55 80 70 90 50 C80 35 65 45 50 50 Z" />
+                <path d="M50 50 C35 65 20 80 10 50 C20 35 35 45 50 50 Z" />
+                <circle cx="50" cy="50" r="12" fill="#0284C7" />
+              </svg>
             </div>
 
             {/* Center Power Button */}
@@ -159,7 +167,7 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
             </button>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-2.5 flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
                 state.isOn ? 'bg-sky-400 animate-pulse' : 'bg-zinc-500'
@@ -176,7 +184,7 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
         </div>
 
         {/* Upward ArcSlider (3 speeds: 1, 2, 3) */}
-        <div className="my-2">
+        <div className="py-1">
           <ArcSlider
             value={state.speed}
             onChange={handleSpeedChange}
@@ -192,7 +200,7 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
         </div>
 
         {/* Control Buttons Grid (From Image 1 codes) */}
-        <div className="grid grid-cols-3 gap-2.5 mt-3">
+        <div className="grid grid-cols-3 gap-2.5 pt-2">
           {/* Swing Control */}
           <button
             onClick={handleToggleSwing}
@@ -242,33 +250,42 @@ export const FanControllerView: React.FC<FanControllerViewProps> = ({
           </button>
         </div>
 
-        {/* Captured NEC Codes from Image 1 */}
+        {/* IR Codes Drawer */}
         {showCodes && (
           <div
-            className={`mt-4 p-4 rounded-2xl border ${
-              isDarkMode ? 'bg-[#18181B] border-surface-border' : 'bg-slate-100 border-slate-300'
+            className={`mt-4 p-4 rounded-3xl border text-xs shadow-xl ${
+              isDarkMode ? 'bg-surface border-surface-border text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                Captured Fan NEC Codes
-              </span>
-              <span className="text-[10px] font-mono text-sky-400">38 kHz</span>
+            <div className="font-bold mb-2 flex items-center justify-between">
+              <span>Verified Hardware IR Codes (NEC MSB)</span>
+              <span className="text-[10px] text-accent-muted font-mono">Poco X7 Pro</span>
             </div>
-            <div className="space-y-1 text-xs font-mono">
-              {Object.values(FAN_CODES).map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between py-1 border-b border-black/5 dark:border-white/5 last:border-0"
-                >
-                  <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-600'}>{c.name}</span>
-                  <span className="text-amber-500 font-bold">0x{c.hex}</span>
-                </div>
-              ))}
+            <div className="space-y-1.5 font-mono text-[11px]">
+              <div className="flex justify-between p-1.5 rounded-lg bg-black/20">
+                <span className="text-accent-muted">Switch On/Off:</span>
+                <span className="text-amber-400">0x00FF58A7</span>
+              </div>
+              <div className="flex justify-between p-1.5 rounded-lg bg-black/20">
+                <span className="text-accent-muted">Wind Speed:</span>
+                <span className="text-sky-400">0xC03FC03F</span>
+              </div>
+              <div className="flex justify-between p-1.5 rounded-lg bg-black/20">
+                <span className="text-accent-muted">Timer:</span>
+                <span className="text-emerald-400">0x00FF906F</span>
+              </div>
+              <div className="flex justify-between p-1.5 rounded-lg bg-black/20">
+                <span className="text-accent-muted">Swing:</span>
+                <span className="text-purple-400">0x926DE01F</span>
+              </div>
+              <div className="flex justify-between p-1.5 rounded-lg bg-black/20">
+                <span className="text-accent-muted">Wind Mode:</span>
+                <span className="text-rose-400">0x5D05807F</span>
+              </div>
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

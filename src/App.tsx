@@ -6,12 +6,12 @@ import { FanControllerView } from './views/FanControllerView';
 import { FireplaceView, FireplaceState } from './views/FireplaceView';
 import { IrSignalIndicator } from './components/IrSignalIndicator';
 import { CustomCodeEditorModal, CustomKey } from './components/CustomCodeEditorModal';
+import { DynamicCapsuleToast } from './components/DynamicCapsuleToast';
+import { FloatingNavDock, ActiveView } from './components/FloatingNavDock';
 import { irBlaster } from './services/irBlaster';
 import { FAN_CODES } from './data/fanCodes';
-import { RGB_LED_CONTROLS } from './data/rgbLedCodes';
-import { FIREPLACE_CODES } from './data/fireplaceCodes';
-
-type ActiveView = 'dashboard' | 'sunset-lamp' | 'bedside-lamp' | 'smart-fan' | 'fireplace';
+import { RGB_LED_CONTROLS, getSavedSunsetOffCode } from './data/rgbLedCodes';
+import { FIREPLACE_CODES, getSavedFireplacePowerCode } from './data/fireplaceCodes';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>(() => {
@@ -165,7 +165,8 @@ export default function App() {
             onToggleSunset={() => {
               const next = !sunsetState.isOn;
               setSunsetState((prev) => ({ ...prev, isOn: next }));
-              irBlaster.sendNec(next ? RGB_LED_CONTROLS.powerOn.hex : RGB_LED_CONTROLS.powerOff.hex, next ? 'Power ON' : 'Power OFF', 'Sunset Lamp');
+              const offCode = getSavedSunsetOffCode();
+              irBlaster.sendNec(next ? RGB_LED_CONTROLS.powerOn.hex : offCode, next ? 'Power ON' : 'Power OFF', 'Sunset Lamp');
             }}
             onToggleLedStrip={() => {
               const next = !bedsideState.isOn;
@@ -180,7 +181,8 @@ export default function App() {
             onToggleFireplace={() => {
               const next = !fireplaceState.isOn;
               setFireplaceState((prev) => ({ ...prev, isOn: next }));
-              irBlaster.sendNec(FIREPLACE_CODES.powerCandidates[0].hex, next ? 'Power ON' : 'Power OFF', 'Fireplace');
+              const pwrCode = getSavedFireplacePowerCode();
+              irBlaster.sendNec(pwrCode, next ? 'Power ON' : 'Power OFF', 'Fireplace');
             }}
           />
         )}
@@ -221,6 +223,16 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Floating Bottom Navigation Dock (Inspired by user's reference designs) */}
+      <FloatingNavDock
+        activeView={activeView}
+        onChangeView={setActiveView}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Luxury Dynamic Capsule Toast */}
+      <DynamicCapsuleToast />
 
       {/* Custom Key Manager & NEC Code Editor Modal */}
       <CustomCodeEditorModal

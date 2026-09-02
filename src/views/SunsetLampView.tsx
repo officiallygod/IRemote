@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, SunMedium, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 import { SunsetProjectorVisual } from '../components/SunsetProjectorVisual';
 import { ArcSlider } from '../components/ArcSlider';
 import { AestheticColorPicker } from '../components/AestheticColorPicker';
-import { RGB_LED_CONTROLS } from '../data/rgbLedCodes';
+import { IrKeyFinderModal } from '../components/IrKeyFinderModal';
+import { RGB_LED_CONTROLS, SUNSET_LAMP_PRESETS, getSavedSunsetOffCode } from '../data/rgbLedCodes';
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
 
@@ -15,9 +16,17 @@ interface SunsetLampViewProps {
     color: string;
     moodName: string;
   };
-  onUpdateState: (newState: Partial<SunsetLampViewProps['state']>) => void;
+  onUpdateState: (update: Partial<SunsetLampViewProps['state']>) => void;
   isDarkMode?: boolean;
 }
+
+// 4 Primary quick keys directly matching user's 24-key remote Row 2
+const PRIMARY_REMOTE_COLORS = [
+  { id: 'red', name: 'Red', color: '#EF4444', hex: '00F720DF' },
+  { id: 'green', name: 'Green', color: '#10B981', hex: '00F7A05F' },
+  { id: 'blue', name: 'Blue', color: '#2563EB', hex: '00F7609F' },
+  { id: 'white', name: 'White', color: '#F8FAFC', hex: '00F7E01F' },
+];
 
 export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
   onBack,
@@ -25,12 +34,15 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
   onUpdateState,
   isDarkMode = true,
 }) => {
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(true);
+  const [showKeyHunter, setShowKeyHunter] = useState(false);
+  const [confirmedOffCode, setConfirmedOffCode] = useState(getSavedSunsetOffCode());
 
   const handleTogglePower = () => {
+    hapticFeedback.click();
     const next = !state.isOn;
     onUpdateState({ isOn: next });
-    const code = next ? RGB_LED_CONTROLS.powerOn.hex : RGB_LED_CONTROLS.powerOff.hex;
+    const code = next ? RGB_LED_CONTROLS.powerOn.hex : confirmedOffCode;
     irBlaster.sendNec(code, next ? 'Power ON' : 'Power OFF', 'Sunset Lamp');
   };
 
@@ -43,6 +55,12 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
     }
   };
 
+  const handleSelectPrimary = (item: typeof PRIMARY_REMOTE_COLORS[0]) => {
+    hapticFeedback.click();
+    onUpdateState({ moodName: item.name, color: item.color });
+    irBlaster.sendNec(item.hex, item.name, 'Sunset Lamp');
+  };
+
   const handleSelectMood = (moodName: string, colorHex: string, irCode: string) => {
     hapticFeedback.click();
     onUpdateState({ moodName, color: colorHex });
@@ -50,46 +68,59 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
-      <div>
-        {/* Top Navigation */}
-        <div className="flex items-center justify-between mb-5">
-          <button
-            onClick={() => {
-              hapticFeedback.click();
-              onBack();
-            }}
-            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
-              isDarkMode
-                ? 'bg-surface border-surface-border text-white/80 hover:text-white'
-                : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
+    <div className="flex flex-col w-full h-screen overflow-hidden select-none max-w-md mx-auto relative">
+      {/* 1. Persistent Top Navigation Bar (Stays completely frozen in place) */}
+      <header
+        className={`shrink-0 z-30 pt-12 pb-3 px-5 backdrop-blur-xl border-b transition-colors flex items-center justify-between ${
+          isDarkMode ? 'bg-[#121214]/85 border-white/5 text-white' : 'bg-white/85 border-slate-200 text-slate-900'
+        }`}
+      >
+        <button
+          onClick={() => {
+            hapticFeedback.click();
+            onBack();
+          }}
+          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
+            isDarkMode
+              ? 'bg-surface border-surface-border text-white/80 hover:text-white'
+              : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
+          }`}
+          aria-label="Back to Dashboard"
+        >
+          <ArrowLeft size={18} />
+        </button>
+
+        <div className="text-center">
+          <span
+            className={`text-[10px] font-semibold tracking-widest uppercase block ${
+              isDarkMode ? 'text-accent-muted' : 'text-slate-500'
             }`}
-            aria-label="Back"
           >
-            <ArrowLeft size={18} />
-          </button>
-
-          <div className="text-center">
-            <span
-              className={`text-[10px] font-semibold tracking-widest uppercase block ${
-                isDarkMode ? 'text-accent-muted' : 'text-slate-500'
-              }`}
-            >
-              Tabletop Projector
-            </span>
-            <h2
-              className={`text-base font-extrabold tracking-tight ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}
-            >
-              Sunset Lamp
-            </h2>
-          </div>
-
-          <div className="w-10" />
+            Dorm Room
+          </span>
+          <h2 className="text-base font-extrabold tracking-tight">Sunset Lamp</h2>
         </div>
 
-        {/* Authentic Sunset Projector Lamp Model with Circular Wall Halo (Image 5) */}
+        {/* Key Hunter Button */}
+        <button
+          onClick={() => {
+            hapticFeedback.tick();
+            setShowKeyHunter(true);
+          }}
+          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
+            isDarkMode
+              ? 'bg-amber-400/10 border-amber-400/30 text-amber-400 hover:bg-amber-400/20'
+              : 'bg-amber-50 border-amber-300 text-amber-600 shadow-sm'
+          }`}
+          title="Key Hunter (Test Power & Color Codes)"
+        >
+          <Zap size={18} />
+        </button>
+      </header>
+
+      {/* 2. Scrollable Body Content (Scrolls smoothly underneath the persistent nav bar) */}
+      <main className="flex-1 overflow-y-auto px-5 pt-3 pb-36 space-y-4 overscroll-contain">
+        {/* Authentic Sunset Projector Lamp Model with Circular Wall Halo */}
         <SunsetProjectorVisual
           isOn={state.isOn}
           onTogglePower={handleTogglePower}
@@ -100,50 +131,61 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
           isDarkMode={isDarkMode}
         />
 
-        {/* Quick Mood Pills (Warm Sunset, Golden Hour, Romantic) */}
-        <div className="flex items-center justify-center gap-3 my-4">
-          <button
-            onClick={() => handleSelectMood('Golden Hour', '#F8E5A5', '00F708F7')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
-              state.moodName === 'Golden Hour'
-                ? 'bg-amber-400 text-black border-amber-400 shadow-glow-amber scale-105'
-                : isDarkMode
-                ? 'bg-surface text-accent-muted border-surface-border'
-                : 'bg-white text-slate-600 border-slate-200'
-            }`}
-          >
-            Golden Hour
-          </button>
+        {/* 4 Primary Remote Keys (R, G, B, W) directly from the physical remote */}
+        <div className="flex flex-col items-center gap-1.5 pt-1">
+          <div className="flex items-center justify-between w-full px-1">
+            <span
+              className={`text-[10px] font-bold tracking-wider uppercase ${
+                isDarkMode ? 'text-accent-muted' : 'text-slate-500'
+              }`}
+            >
+              Primary Remote Keys (Row 2)
+            </span>
+            <span className="text-[10px] font-mono text-amber-400">Address 0x00F7</span>
+          </div>
 
-          <button
-            onClick={() => handleSelectMood('Deep Sunset', '#FF5733', '00F710EF')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
-              state.moodName === 'Deep Sunset'
-                ? 'bg-rose-500 text-white border-rose-500 shadow-md scale-105'
-                : isDarkMode
-                ? 'bg-surface text-accent-muted border-surface-border'
-                : 'bg-white text-slate-600 border-slate-200'
-            }`}
-          >
-            Deep Sunset
-          </button>
-
-          <button
-            onClick={() => handleSelectMood('Twilight Violet', '#A855F7', '00F7708F')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
-              state.moodName === 'Twilight Violet'
-                ? 'bg-purple-500 text-white border-purple-500 shadow-md scale-105'
-                : isDarkMode
-                ? 'bg-surface text-accent-muted border-surface-border'
-                : 'bg-white text-slate-600 border-slate-200'
-            }`}
-          >
-            Twilight
-          </button>
+          <div className="grid grid-cols-4 gap-2.5 w-full">
+            {PRIMARY_REMOTE_COLORS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleSelectPrimary(item)}
+                className="h-11 rounded-2xl flex items-center justify-center font-extrabold text-xs shadow-md border border-white/20 active:scale-90 transition-all"
+                style={{
+                  backgroundColor: item.color,
+                  color: item.id === 'white' ? '#0F172A' : '#FFFFFF',
+                  boxShadow: `0 4px 14px ${item.color}40`,
+                }}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Upward ArcSlider (∩ shape, no overlap) */}
-        <div className="my-2">
+        {/* Quick Mood Pills */}
+        <div className="flex items-center justify-center gap-2 py-1 overflow-x-auto scrollbar-none">
+          {SUNSET_LAMP_PRESETS.map((preset) => {
+            const isSelected = state.moodName === preset.name;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => handleSelectMood(preset.name, preset.colorHex, preset.irHex)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border ${
+                  isSelected
+                    ? 'bg-amber-400 text-black border-amber-400 shadow-glow-amber scale-105'
+                    : isDarkMode
+                    ? 'bg-surface text-accent-muted border-surface-border'
+                    : 'bg-white text-slate-600 border-slate-200'
+                }`}
+              >
+                {preset.name}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Upward ArcSlider (∩ shape, zero overlap) */}
+        <div className="py-2">
           <ArcSlider
             value={state.brightness}
             onChange={handleBrightnessChange}
@@ -157,14 +199,14 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
           />
         </div>
 
-        {/* Aesthetic Color Palette Drawer */}
-        <div className="mt-3">
+        {/* 24-Key Remote & Color Matrix Drawer */}
+        <div className="pt-2">
           <button
             onClick={() => {
               hapticFeedback.click();
               setShowColorPicker(!showColorPicker);
             }}
-            className={`w-full py-2.5 px-4 rounded-2xl border flex items-center justify-between text-xs font-bold transition-colors ${
+            className={`w-full py-3 px-4 rounded-2xl border flex items-center justify-between text-xs font-bold transition-colors ${
               isDarkMode
                 ? 'bg-surface border-surface-border text-white hover:bg-surface-hover'
                 : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50 shadow-sm'
@@ -175,7 +217,7 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
                 className="w-3.5 h-3.5 rounded-full shadow-sm"
                 style={{ backgroundColor: state.color }}
               />
-              <span>Color Palette & 24-Key Remote</span>
+              <span>Full 24-Key Physical Remote & Palettes</span>
             </div>
             {showColorPicker ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -184,10 +226,10 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
             <div className="mt-3">
               <AestheticColorPicker
                 selectedColor={state.color}
-                onSelectColor={(colorHex, irCode) => {
-                  onUpdateState({ color: colorHex, moodName: 'Custom Hue' });
+                onSelectColor={(hex, irCode) => {
+                  onUpdateState({ color: hex });
                   if (irCode) {
-                    irBlaster.sendNec(irCode, 'Color Shift', 'Sunset Lamp');
+                    irBlaster.sendNec(irCode, 'Set Color', 'Sunset Lamp');
                   }
                 }}
                 isDarkMode={isDarkMode}
@@ -195,7 +237,16 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </main>
+
+      {/* Interactive Key Hunter Modal */}
+      <IrKeyFinderModal
+        isOpen={showKeyHunter}
+        onClose={() => setShowKeyHunter(false)}
+        targetDevice="sunset"
+        isDarkMode={isDarkMode}
+        onCodeSaved={(newOffCode) => setConfirmedOffCode(newOffCode)}
+      />
     </div>
   );
 };

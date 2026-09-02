@@ -59,17 +59,28 @@ Live Web Preview: [https://officiallygod.github.io/IRemote/](https://officiallyg
 
 ## Architecture & System Features
 
-### 1. Fireplace Flame Humidifier & Diffuser (4-Button Pebble Remote)
+### 1. Interactive IR Key Hunter & Candidate Scanner
+* Built-in interactive code hunter for discovering unmapped power and color toggle commands.
+* **Fireplace Matrix**: Scans Address `0xC2E2` candidates (`0x18`, `0x08`, `0x58`, `0x78`, `0x88`, `0xB8`, `0xD8`, `0xF8`, etc.) with 1-tap test and persistent storage in `localStorage`.
+* **Sunset Lamp Matrix**: Tests Address `0x00F7`, `0x00FF`, `0x00EF` power toggle and OFF codes.
+* Auto-scan engine cycling through codes with pause/resume and one-touch confirmation.
+
+### 2. Modern App UI & Layout Architecture
+* **Persistent Top Navigation Bar**: Frosted glass header (`sticky top-0 z-30 backdrop-blur-xl`) with safe-area spacing that remains completely stable while content scrolls smoothly underneath.
+* **Floating Bottom Pill Dock**: Inspired by luxury smart home control centers with quick-switching across Dashboard, Sunset Lamp, Bedside Lamp, Fan, and Fireplace.
+* **Dynamic Island Capsule Toast**: Floating top banner with pulsing transmitter diode waveform, device name badge, action description, and hex readout.
+* **Reliable Theme Persistence**: Dark/Light mode preference synced immediately to `localStorage` and `<html>` class list.
+
+### 3. Fireplace Flame Humidifier & Diffuser (4-Button Pebble Remote)
 * Direct integration of verified NEC codes from IrCode Finder:
-  * **Toggle Fireplace Light Effect**: `0xC2E238C7` (Cycles 6 authentic flame colors: Crimson, Gold, Green, Cyan, Cobalt Blue, Amethyst Purple)
+  * **Toggle Fireplace Light Effect**: `0xC2E238C7` (Cycles 6 authentic flame colors and wakes device from off state)
   * **Switch Fog Light Effect**: `0xC2E29867` (Toggles rising flame fog mist)
   * **Timer**: `0xC2E27887` (Cycles 1h, 3h, 5h, ON)
-  * **Power On/Off**: Integrated candidate testing engine (Address `0xC2E2`)
 * Visual animated fireplace box with charred log silhouettes, pulsing glowing ember cracks, and illuminated water mist flames.
 
-### 2. Physical 24-Key Remote Replica
+### 4. Physical 24-Key Remote Replica
 * 1:1 tactile digital replica of the physical white 24-key remote with address switcher (`0x00F7`, `0x00EF`, `0xFF00`).
-* Real-time color synchronization and mode selection (Flash, Strobe, Fade, Smooth).
+* Direct Row 2 primary color buttons (**Red**, **Green**, **Blue**, **White**) mounted directly on the Sunset Lamp controller.
 
 ### 1. Hardware Infrared Transmission Layer
 * Native Android plugin interfacing with `android.hardware.ConsumerIrManager`.

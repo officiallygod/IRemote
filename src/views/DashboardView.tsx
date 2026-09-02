@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, LayoutGrid, Sun, Moon } from 'lucide-react';
+import { Plus, LayoutGrid, Sun, Moon, Sliders } from 'lucide-react';
 import { RoomIsometricCard } from '../components/RoomIsometricCard';
 import { DeviceCard } from '../components/DeviceCard';
 import { hapticFeedback } from '../services/haptics';
@@ -40,7 +40,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedZone, setSelectedZone] = useState('Dorm Room');
   const [karlsruheTemp, setKarlsruheTemp] = useState('22°');
 
-  // Fetch real temperature (clean degrees only)
+  // Fetch real temperature
   useEffect(() => {
     let isMounted = true;
     fetchKarlsruheWeather().then((data) => {
@@ -60,77 +60,80 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     (fireplaceState.isOn ? 1 : 0);
 
   return (
-    <div className="flex flex-col w-full min-h-screen pb-24 px-5 pt-14 sm:pt-16 select-none max-w-md mx-auto justify-between">
-      <div>
-        {/* Top Header: "Hi, Allen!" + Theme Toggle + Settings */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <span
-              className={`text-xs font-semibold block mb-0.5 tracking-wide ${
-                isDarkMode ? 'text-accent-muted' : 'text-slate-500'
-              }`}
-            >
-              Hi, Allen!
-            </span>
-            <h1
-              className={`text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}
-            >
-              Choose<br />Lighting Zone
-            </h1>
+    <div className="flex flex-col w-full h-screen overflow-hidden select-none max-w-md mx-auto relative">
+      {/* 1. Persistent Top Navigation Bar (Stays completely frozen in place) */}
+      <header
+        className={`shrink-0 z-30 pt-12 pb-3 px-5 backdrop-blur-xl border-b transition-colors flex items-center justify-between ${
+          isDarkMode ? 'bg-[#121214]/85 border-white/5 text-white' : 'bg-white/85 border-slate-200 text-slate-900'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-amber-400 text-black flex items-center justify-center font-black text-sm shadow-md">
+            iR
           </div>
-
-          {/* Header Controls: Theme Toggle & Settings */}
-          <div className="flex items-center gap-2">
-            {/* Light / Dark Mode Toggle */}
-            <button
-              onClick={() => {
-                hapticFeedback.tick();
-                onToggleTheme();
-              }}
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-90 border ${
-                isDarkMode
-                  ? 'bg-surface border-surface-border text-amber-300 hover:bg-surface-hover'
-                  : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
-              }`}
-              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              aria-label="Toggle Theme"
-            >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
-            {/* 4-dot Grid / Settings Action */}
-            <button
-              onClick={() => {
-                hapticFeedback.click();
-                onOpenSettings();
-              }}
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-90 border ${
-                isDarkMode
-                  ? 'bg-surface border-surface-border text-white/80 hover:text-white'
-                  : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900'
-              }`}
-              aria-label="Settings and Codes"
-            >
-              <LayoutGrid size={18} />
-            </button>
+          <div>
+            <h1 className="text-base font-extrabold tracking-tight flex items-center gap-1.5">
+              <span>IRemote</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-400/15 text-cyan-400 font-mono font-bold">
+                Poco X7 Pro
+              </span>
+            </h1>
           </div>
         </div>
 
-        {/* Lighting Zone Filter Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2.5 mb-3.5 -mx-4 px-4 sm:-mx-6 sm:px-6">
-          <button
-            onClick={() => hapticFeedback.tick()}
-            className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-all border ${
+        <div className="flex items-center gap-2">
+          {/* Karlsruhe Clean Temp Chip */}
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
               isDarkMode
-                ? 'bg-surface border-surface-border text-white/80'
-                : 'bg-white border-slate-200 text-slate-700 shadow-sm'
+                ? 'bg-surface border-surface-border text-white'
+                : 'bg-slate-100 border-slate-200 text-slate-800 shadow-sm'
             }`}
           >
-            <Plus size={15} />
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span>{karlsruheTemp}</span>
+          </div>
+
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => {
+              hapticFeedback.click();
+              onToggleTheme();
+            }}
+            className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
+              isDarkMode
+                ? 'bg-surface border-surface-border text-amber-400 hover:text-amber-300'
+                : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
+            }`}
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle Theme"
+          >
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
+          {/* Custom Codes / Settings Button */}
+          <button
+            onClick={() => {
+              hapticFeedback.click();
+              onOpenSettings();
+            }}
+            className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
+              isDarkMode
+                ? 'bg-surface border-surface-border text-white/80 hover:text-white'
+                : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
+            }`}
+            title="Custom IR Keys"
+            aria-label="Custom IR Keys"
+          >
+            <Sliders size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Scrollable Body Content (Scrolls smoothly underneath the persistent nav bar) */}
+      <main className="flex-1 overflow-y-auto px-5 pt-3 pb-36 space-y-4 overscroll-contain">
+        {/* Zone Pill Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
           {ZONES.map((zone) => {
             const isActive = selectedZone === zone;
             return (
@@ -140,7 +143,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   hapticFeedback.tick();
                   setSelectedZone(zone);
                 }}
-                className={`h-9 px-4 rounded-full text-xs font-bold shrink-0 transition-all border ${
+                className={`h-8 px-4 rounded-full text-xs font-bold shrink-0 transition-all border ${
                   isActive
                     ? isDarkMode
                       ? 'bg-white text-[#121214] border-white shadow-md'
@@ -157,41 +160,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* 3D Isometric Room Scene Card */}
-        <div className="mb-5">
+        <div>
           <RoomIsometricCard
             roomName={selectedZone}
             activeDevicesCount={activeCount}
-            temperature={karlsruheTemp}
-            activeMode={sunsetState.moodName}
+            isDarkMode={isDarkMode}
             isSunsetOn={sunsetState.isOn}
             isBedsideOn={ledStripState.isOn}
+            temperature={karlsruheTemp}
+            activeMode={sunsetState.moodName}
             onToggleSunset={onToggleSunset}
             onToggleBedside={onToggleLedStrip}
-            isDarkMode={isDarkMode}
           />
         </div>
 
-        {/* Devices Section Header */}
-        <div className="flex items-center justify-between mb-3 px-1">
-          <h3
-            className={`text-sm font-bold tracking-wide ${
-              isDarkMode ? 'text-white' : 'text-slate-900'
-            }`}
-          >
-            Devices
-          </h3>
+        {/* Device Grid Header */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
+            <LayoutGrid size={15} className={isDarkMode ? 'text-accent-muted' : 'text-slate-500'} />
+            <h3
+              className={`text-xs font-bold tracking-wider uppercase ${
+                isDarkMode ? 'text-white' : 'text-slate-800'
+              }`}
+            >
+              Appliances
+            </h3>
+          </div>
           <span
-            className={`text-xs font-semibold ${
-              isDarkMode ? 'text-accent-muted' : 'text-slate-500'
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+              isDarkMode
+                ? 'bg-white/5 border-white/10 text-accent-muted'
+                : 'bg-slate-100 border-slate-200 text-slate-600'
             }`}
           >
             {activeCount} Active
           </span>
         </div>
 
-        {/* Device Cards Grid (IKEA removed, real 3 devices present) */}
-        <div className="grid grid-cols-2 gap-3.5">
-          {/* Device 1: Sunset Lamp (Image 5 model) */}
+        {/* Device Cards Grid (4 Devices in 2x2 grid) */}
+        <div className="grid grid-cols-2 gap-3.5 pb-2">
+          {/* Device 1: Sunset Lamp */}
           <DeviceCard
             id="device-sunset"
             deviceIndexLabel="Device 1"
@@ -205,7 +213,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             isDarkMode={isDarkMode}
           />
 
-          {/* Device 2: Three O Bedside Touch Night Lamp (Image 2) */}
+          {/* Device 2: Bedside Touch Lamp */}
           <DeviceCard
             id="device-bedside"
             deviceIndexLabel="Device 2"
@@ -247,7 +255,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             isDarkMode={isDarkMode}
           />
         </div>
-      </div>
+      </main>
     </div>
   );
 };
