@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import { hapticFeedback } from '../services/haptics';
 
 interface FireplaceFlameVisualProps {
@@ -11,17 +12,26 @@ interface FireplaceFlameVisualProps {
   isDarkMode?: boolean;
 }
 
-interface FlameMistParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  life: number;
-  maxLife: number;
-  opacity: number;
-  curveOffset: number;
-  turbSpeed: number;
+// Procedural Soft Volumetric Flame Particle Texture (Silky fluid feathering)
+function createSoftFlameTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+  grad.addColorStop(0.2, 'rgba(254, 240, 138, 0.9)');
+  grad.addColorStop(0.5, 'rgba(249, 115, 22, 0.6)');
+  grad.addColorStop(0.8, 'rgba(239, 68, 68, 0.25)');
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
 }
 
 export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
@@ -33,161 +43,504 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
   onTogglePower,
   isDarkMode = true,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rotationGroupRef = useRef<THREE.Group | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
-  // High-Fidelity Ultrasonic Billowing Flame Simulation (Tall & Leaping matching user photo)
+  // Dynamic references
+  const pointLightRef = useRef<THREE.PointLight | null>(null);
+  const chamberLightRef = useRef<THREE.PointLight | null>(null);
+  const emberMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const slotMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const fissureMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
+
+  // Particle references
+  const topFlameSpritesRef = useRef<Array<{
+    sprite: THREE.Sprite;
+    baseX: number;
+    baseZ: number;
+    speedY: number;
+    speedX: number;
+    phase: number;
+    scaleBase: number;
+  }>>([]);
+
+  const insideFlameSpritesRef = useRef<Array<{
+    sprite: THREE.Sprite;
+    baseX: number;
+    baseY: number;
+    baseZ: number;
+    phase: number;
+    scaleBase: number;
+  }>>([]);
+
+  // Interactive 3D drag
+  const isDragging = useRef(false);
+  const prevPointerX = useRef(0);
+  const targetRotationY = useRef(0);
+  const currentRotationY = useRef(0);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const container = mountRef.current;
+    if (!container) return;
 
-    let particles: FlameMistParticle[] = [];
-    let isRunning = true;
-    let frameCount = 0;
+    const width = container.clientWidth || 360;
+    const height = 250;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    // 1. Scene & Camera
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
 
-    // Slot bounds (matches rectangular slot on top)
-    const slotStartX = width * 0.18;
-    const slotWidth = width * 0.64;
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+    camera.position.set(0, 0.32, 2.6);
+    camera.lookAt(0, 0.08, 0);
 
-    const spawnParticle = (): FlameMistParticle => {
-      // Gaussian distribution centered over slot
-      const u = Math.random() + Math.random();
-      const norm = u > 1 ? 2 - u : u;
-      const x = slotStartX + norm * slotWidth;
+    // 2. High-Performance WebGL Renderer
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
 
-      return {
-        x,
-        y: height - 8,
-        vx: (Math.random() - 0.5) * 0.7,
-        vy: -(2.4 + Math.random() * 3.2), // Tall leaping upward velocity
-        size: 18 + Math.random() * 20,
-        life: 0,
-        maxLife: 45 + Math.random() * 35,
-        opacity: 0.8 + Math.random() * 0.2,
-        curveOffset: Math.random() * Math.PI * 2,
-        turbSpeed: 0.04 + Math.random() * 0.05,
-      };
+    // 3. Master Interactive Rotation Group
+    const masterGroup = new THREE.Group();
+    scene.add(masterGroup);
+    rotationGroupRef.current = masterGroup;
+
+    // 4. Lighting Rig
+    const ambientLight = new THREE.AmbientLight(0xffffff, isDarkMode ? 0.7 : 1.3);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff7ed, isDarkMode ? 1.0 : 1.5);
+    dirLight.position.set(2, 4, 3);
+    scene.add(dirLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
+    rimLight.position.set(-2, -0.5, -2);
+    scene.add(rimLight);
+
+    // Dynamic Top Mist Flame Light
+    const fireLight = new THREE.PointLight(new THREE.Color(flameColor), isOn ? 3.5 : 0, 3.8);
+    fireLight.position.set(0, 0.2, 0.25);
+    masterGroup.add(fireLight);
+    pointLightRef.current = fireLight;
+
+    // 5. Materials
+    const chassisMat = new THREE.MeshStandardMaterial({
+      color: 0x111215,
+      roughness: 0.35,
+      metalness: 0.25,
+    });
+    const bevelMat = new THREE.MeshStandardMaterial({
+      color: 0x1e2026,
+      roughness: 0.25,
+      metalness: 0.5,
+    });
+    const interiorCavityMat = new THREE.MeshStandardMaterial({
+      color: 0x050608,
+      roughness: 0.95,
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x080a0e,
+      roughness: 0.04,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.2, // Crystal clear view of burning logs and internal flames!
+      transmission: 0.9,
+      ior: 1.45,
+    });
+    const logMat = new THREE.MeshStandardMaterial({
+      color: 0x2b2e36,
+      roughness: 0.85,
+      metalness: 0.1,
+    });
+    const logKnotMat = new THREE.MeshStandardMaterial({
+      color: 0x424754,
+      roughness: 0.7,
+      metalness: 0.15,
+    });
+
+    // 6. The Fireplace Chassis Assembly: Hollow open frame with front window
+    const chassisGroup = new THREE.Group();
+    masterGroup.add(chassisGroup);
+
+    // Chassis Back Plate
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.52, 0.04), interiorCavityMat);
+    backWall.position.set(0, 0, -0.19);
+    chassisGroup.add(backWall);
+
+    // Chassis Top Arch / Border
+    const topBorder = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.09, 0.42), chassisMat);
+    topBorder.position.set(0, 0.215, 0);
+    chassisGroup.add(topBorder);
+
+    // Chassis Bottom Hearth Border
+    const bottomBorder = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.09, 0.42), chassisMat);
+    bottomBorder.position.set(0, -0.215, 0);
+    chassisGroup.add(bottomBorder);
+
+    // Chassis Left Pillar
+    const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.34, 0.42), chassisMat);
+    leftPillar.position.set(-0.555, 0, 0);
+    chassisGroup.add(leftPillar);
+
+    // Chassis Right Pillar
+    const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.34, 0.42), chassisMat);
+    rightPillar.position.set(0.555, 0, 0);
+    chassisGroup.add(rightPillar);
+
+    // Top Beveled Lid
+    const topLid = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.04, 0.44), bevelMat);
+    topLid.position.y = 0.27;
+    chassisGroup.add(topLid);
+
+    // Top Recessed Mist Emitter Channel
+    const slotMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.86, 0.012, 0.04),
+      new THREE.MeshBasicMaterial({
+        color: isOn ? 0xfef08a : 0x07080a,
+      })
+    );
+    slotMesh.position.set(0, 0.291, 0);
+    chassisGroup.add(slotMesh);
+    slotMatRef.current = slotMesh.material as THREE.MeshBasicMaterial;
+
+    // Front Panoramic Tinted Glass Pane
+    const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.34, 0.008), glassMat);
+    frontGlass.position.set(0, 0, 0.21);
+    chassisGroup.add(frontGlass);
+
+    // Internal Warm Glow inside Firebox Chamber (Illuminating the logs from within)
+    const chamberGlow = new THREE.PointLight(new THREE.Color(flameColor), isOn ? 3.5 : 0, 1.8);
+    chamberGlow.position.set(0, 0.02, 0.1);
+    chassisGroup.add(chamberGlow);
+    chamberLightRef.current = chamberGlow;
+
+    // 7. Molten Glowing Burning Ember Bed
+    const emberMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.96, 0.03, 0.22),
+      new THREE.MeshBasicMaterial({
+        color: isOn ? new THREE.Color(flameColor) : 0x121316,
+      })
+    );
+    emberMesh.position.set(0, -0.15, 0.1);
+    chassisGroup.add(emberMesh);
+    emberMatRef.current = emberMesh.material as THREE.MeshBasicMaterial;
+
+    // 8. Stacked 3D Charred Oak Firewood Logs inside the Glass Chamber (1:1 with photo!)
+    // Main horizontal charred timber
+    const log1 = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.68, 16), logMat);
+    log1.rotation.z = Math.PI / 2;
+    log1.position.set(0, -0.09, 0.12);
+    chassisGroup.add(log1);
+
+    // Cut tree ring on main log
+    const log1Cut = new THREE.Mesh(new THREE.CircleGeometry(0.038, 16), logKnotMat);
+    log1Cut.rotation.y = Math.PI / 2;
+    log1Cut.position.set(0.34, -0.09, 0.12);
+    chassisGroup.add(log1Cut);
+
+    // Left angled timber
+    const log2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 16), logMat);
+    log2.rotation.z = Math.PI / 3.3;
+    log2.position.set(-0.18, -0.05, 0.14);
+    chassisGroup.add(log2);
+
+    // Right crossed diagonal branch (Rests on top of center log)
+    const log3 = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.46, 16), logMat);
+    log3.rotation.z = -Math.PI / 3.6;
+    log3.position.set(0.2, -0.04, 0.14);
+    chassisGroup.add(log3);
+
+    // Fiery hot fissures between logs (pulses red/orange)
+    const fissureMat = new THREE.MeshBasicMaterial({
+      color: isOn ? 0xff3700 : 0x000000,
+      transparent: true,
+      opacity: isOn ? 0.95 : 0,
+    });
+    fissureMatRef.current = fissureMat;
+    const fissure1 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.01, 0.04), fissureMat);
+    fissure1.position.set(-0.12, -0.11, 0.15);
+    chassisGroup.add(fissure1);
+    const fissure2 = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.01, 0.04), fissureMat);
+    fissure2.position.set(0.14, -0.11, 0.15);
+    chassisGroup.add(fissure2);
+
+    // Shared Procedural Soft Flame Texture
+    const flameTexture = createSoftFlameTexture();
+
+    // -------------------------------------------------------------------------
+    // 9. LAYER 1: FLAMES INSIDE THE FIREPLACE CHAMBER (Licking around the wood logs!)
+    // -------------------------------------------------------------------------
+    const insideFlamesGroup = new THREE.Group();
+    chassisGroup.add(insideFlamesGroup);
+
+    const insideSprites: Array<{
+      sprite: THREE.Sprite;
+      baseX: number;
+      baseY: number;
+      baseZ: number;
+      phase: number;
+      scaleBase: number;
+    }> = [];
+
+    // Create 18 dancing flame tongues nestled directly within the wood logs
+    for (let i = 0; i < 18; i++) {
+      const inSpMat = new THREE.SpriteMaterial({
+        map: flameTexture,
+        color: new THREE.Color(flameColor),
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+
+      const inSprite = new THREE.Sprite(inSpMat);
+      const baseX = (Math.random() - 0.5) * 0.65;
+      const baseY = -0.12 + Math.random() * 0.14; // Nestled between coals and top of logs
+      const baseZ = 0.11 + Math.random() * 0.06;
+      inSprite.position.set(baseX, baseY, baseZ);
+
+      const scaleBase = 0.12 + Math.random() * 0.1;
+      inSprite.scale.set(scaleBase, scaleBase * 1.6, 1);
+
+      insideFlamesGroup.add(inSprite);
+
+      insideSprites.push({
+        sprite: inSprite,
+        baseX,
+        baseY,
+        baseZ,
+        phase: Math.random() * Math.PI * 2,
+        scaleBase,
+      });
+    }
+    insideFlameSpritesRef.current = insideSprites;
+
+    // -------------------------------------------------------------------------
+    // 10. LAYER 2: TOP VOLUMETRIC LEAPING FLAME MIST (Rising high out of the slot)
+    // -------------------------------------------------------------------------
+    const topSpritesGroup = new THREE.Group();
+    masterGroup.add(topSpritesGroup);
+
+    const topSprites: Array<{
+      sprite: THREE.Sprite;
+      baseX: number;
+      baseZ: number;
+      speedY: number;
+      speedX: number;
+      phase: number;
+      scaleBase: number;
+    }> = [];
+
+    const numTopSprites = 38;
+    for (let i = 0; i < numTopSprites; i++) {
+      const spMat = new THREE.SpriteMaterial({
+        map: flameTexture,
+        color: new THREE.Color(flameColor),
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+
+      const sprite = new THREE.Sprite(spMat);
+      const spawnX = (Math.random() - 0.5) * 0.78;
+      const spawnZ = (Math.random() - 0.5) * 0.03;
+      const spawnY = 0.3 + Math.random() * 0.45;
+      sprite.position.set(spawnX, spawnY, spawnZ);
+
+      const scaleBase = 0.22 + Math.random() * 0.2;
+      sprite.scale.set(scaleBase, scaleBase * 1.5, 1);
+
+      topSpritesGroup.add(sprite);
+
+      topSprites.push({
+        sprite,
+        baseX: spawnX,
+        baseZ: spawnZ,
+        speedY: 0.007 + Math.random() * 0.011,
+        speedX: (Math.random() - 0.5) * 0.003,
+        phase: Math.random() * Math.PI * 2,
+        scaleBase,
+      });
+    }
+    topFlameSpritesRef.current = topSprites;
+
+    // 11. Tabletop Mirror Reflection Plane below the fireplace
+    const reflectionMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.4, 0.6),
+      new THREE.MeshBasicMaterial({
+        color: isOn ? new THREE.Color(flameColor) : 0x000000,
+        transparent: true,
+        opacity: isOn ? 0.22 : 0,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    reflectionMesh.position.set(0, -0.28, 0);
+    reflectionMesh.rotation.x = -Math.PI / 2;
+    masterGroup.add(reflectionMesh);
+
+    // 12. Interactive Pointer Drag for 3D Orbit
+    const handlePointerDown = (e: PointerEvent) => {
+      isDragging.current = true;
+      prevPointerX.current = e.clientX;
     };
 
-    const render = () => {
-      if (!isRunning) return;
-      frameCount++;
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDragging.current) return;
+      const deltaX = e.clientX - prevPointerX.current;
+      prevPointerX.current = e.clientX;
+      targetRotationY.current += deltaX * 0.007;
+      targetRotationY.current = Math.max(-0.5, Math.min(0.5, targetRotationY.current));
+    };
 
-      ctx.clearRect(0, 0, width, height);
+    const handlePointerUp = () => {
+      isDragging.current = false;
+    };
 
-      if (isOn) {
-        // If smoke is on: spawn thick billowing flame mist particles
-        // If smoke is off: spawn subtle luminous heat shimmer
-        const spawnCount = isSmokeOn ? 5 : 1;
-        const maxParticles = isSmokeOn ? 120 : 25;
+    container.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
 
-        for (let i = 0; i < spawnCount; i++) {
-          if (particles.length < maxParticles) {
-            particles.push(spawnParticle());
-          }
-        }
+    // 13. Visibility Observer (0% CPU when off-screen)
+    let isVisible = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+    });
+    observer.observe(container);
 
-        // Draw particles with soft radial gradients
-        for (let i = particles.length - 1; i >= 0; i--) {
-          const p = particles[i];
-          p.life++;
+    let flameTime = 0;
 
-          // Fluid organic wind turbulence
-          p.x += p.vx + Math.sin(frameCount * p.turbSpeed + p.curveOffset) * 0.85;
-          p.y += p.vy;
-          p.size += 0.55; // Natural expansion as flame mist ascends
+    const animate = () => {
+      animFrameRef.current = requestAnimationFrame(animate);
 
-          const progress = p.life / p.maxLife;
-          const currentAlpha = p.opacity * (1 - progress);
+      if (!isVisible) return;
+      flameTime += 0.04;
 
-          if (progress >= 1 || currentAlpha <= 0) {
-            particles.splice(i, 1);
-            continue;
-          }
-
-          ctx.save();
-          ctx.globalAlpha = currentAlpha * (isSmokeOn ? 1.0 : 0.3);
-          ctx.globalCompositeOperation = 'screen';
-
-          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-          // Brilliant white-hot center transitioning to golden yellow then selected flame color
-          grad.addColorStop(0, '#FFFFFF');
-          grad.addColorStop(0.18, '#FEF08A');
-          grad.addColorStop(0.6, flameColor);
-          grad.addColorStop(1, 'transparent');
-
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-
-        // Brilliant glowing emitter strip at slot mouth (1:1 with photo)
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const slotGrad = ctx.createLinearGradient(slotStartX, 0, slotStartX + slotWidth, 0);
-        slotGrad.addColorStop(0, 'transparent');
-        slotGrad.addColorStop(0.2, '#FFFBEB');
-        slotGrad.addColorStop(0.5, '#FEF08A');
-        slotGrad.addColorStop(0.8, '#FFFBEB');
-        slotGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = slotGrad;
-        ctx.fillRect(slotStartX, height - 10, slotWidth, 9);
-
-        // Rising micro-ember sparks
-        if (isSmokeOn && frameCount % 5 === 0) {
-          const sparkX = slotStartX + Math.random() * slotWidth;
-          const sparkY = height - 16 - Math.random() * 60;
-          ctx.fillStyle = '#FFFFFF';
-          ctx.beginPath();
-          ctx.arc(sparkX, sparkY, 1.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      } else {
-        particles = [];
+      // Spring rotation interpolation
+      currentRotationY.current += (targetRotationY.current - currentRotationY.current) * 0.12;
+      if (rotationGroupRef.current) {
+        rotationGroupRef.current.rotation.y = currentRotationY.current;
       }
 
-      animFrameRef.current = requestAnimationFrame(render);
+      // Animate 1: INTERNAL FLAMES INSIDE THE FIREPLACE CHAMBER (Dancing between logs)
+      if (isOn) {
+        insideFlamesGroup.visible = true;
+        insideSprites.forEach((sp) => {
+          // Dynamic flickering and swaying
+          const flick = Math.sin(flameTime * 5 + sp.phase);
+          const scaleY = sp.scaleBase * (1.3 + flick * 0.4);
+          const scaleX = sp.scaleBase * (1.0 - flick * 0.15);
+          sp.sprite.scale.set(scaleX, scaleY, 1);
+          sp.sprite.position.y = sp.baseY + Math.abs(Math.sin(flameTime * 4 + sp.phase)) * 0.04;
+          sp.sprite.position.x = sp.baseX + Math.sin(flameTime * 3 + sp.phase) * 0.015;
+          sp.sprite.material.opacity = 0.75 + flick * 0.2;
+        });
+
+        // Pulsating thermal glow inside the chamber
+        if (chamberLightRef.current) {
+          chamberLightRef.current.intensity = 2.8 + Math.sin(flameTime * 4.5) * 0.6;
+        }
+      } else {
+        insideFlamesGroup.visible = false;
+        if (chamberLightRef.current) {
+          chamberLightRef.current.intensity = 0;
+        }
+      }
+
+      // Animate 2: TOP VOLUMETRIC MIST FLAMES
+      if (isOn && isSmokeOn) {
+        topSpritesGroup.visible = true;
+        topSprites.forEach((sp) => {
+          sp.sprite.position.y += sp.speedY;
+          sp.sprite.position.x = sp.baseX + Math.sin(flameTime * 2.2 + sp.phase) * 0.035;
+
+          const progress = (sp.sprite.position.y - 0.29) / 0.55;
+
+          if (progress >= 1.0) {
+            sp.sprite.position.y = 0.3;
+            sp.baseX = (Math.random() - 0.5) * 0.78;
+          } else {
+            // Billowing expansion and soft fade out
+            const scale = sp.scaleBase * (1.0 + progress * 0.9);
+            sp.sprite.scale.set(scale, scale * 1.5, 1);
+            sp.sprite.material.opacity = (1.0 - progress) * 0.8;
+          }
+        });
+
+        // Pulsating top flame point light
+        if (pointLightRef.current) {
+          pointLightRef.current.intensity = 3.2 + Math.sin(flameTime * 3.5) * 0.7;
+        }
+      } else {
+        topSpritesGroup.visible = false;
+        if (pointLightRef.current) {
+          pointLightRef.current.intensity = isOn ? 2.0 : 0;
+        }
+      }
+
+      renderer.render(scene, camera);
     };
 
-    animFrameRef.current = requestAnimationFrame(render);
+    animate();
 
     return () => {
-      isRunning = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      observer.disconnect();
+      container.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
     };
+  }, [isDarkMode]);
+
+  // Real-time prop updates (Color & Power)
+  useEffect(() => {
+    if (pointLightRef.current) {
+      pointLightRef.current.color.set(flameColor);
+      pointLightRef.current.intensity = isOn ? 3.2 : 0;
+    }
+    if (chamberLightRef.current) {
+      chamberLightRef.current.color.set(flameColor);
+      chamberLightRef.current.intensity = isOn ? 2.8 : 0;
+    }
+    if (emberMatRef.current) {
+      emberMatRef.current.color.set(isOn ? flameColor : '#121316');
+    }
+    if (fissureMatRef.current) {
+      fissureMatRef.current.color.set(isOn ? '#FF3700' : '#000000');
+      fissureMatRef.current.opacity = isOn ? 0.95 : 0;
+    }
+    if (slotMatRef.current) {
+      slotMatRef.current.color.set(isOn ? '#FEF08A' : '#07080A');
+    }
+    if (insideFlameSpritesRef.current) {
+      insideFlameSpritesRef.current.forEach((sp) => {
+        sp.sprite.material.color.set(flameColor);
+      });
+    }
+    if (topFlameSpritesRef.current) {
+      topFlameSpritesRef.current.forEach((sp) => {
+        sp.sprite.material.color.set(flameColor);
+      });
+    }
   }, [isOn, isSmokeOn, flameColor]);
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full py-2 select-none">
-      {/* 1. Volumetric Leaping Flames & Mist Canvas (Tall 180px, matches photo) */}
-      <div className="relative w-80 sm:w-96 h-52 flex items-end justify-center overflow-visible pointer-events-none mb-[-24px] z-20">
-        {/* Soft Ambient Volumetric Backlight Glow */}
-        {isOn && (
-          <div
-            className="absolute -bottom-6 w-72 h-44 blur-3xl opacity-85 transition-all duration-700 animate-pulse rounded-full"
-            style={{ backgroundColor: flameColor }}
-          />
-        )}
-
-        {/* High-Performance Canvas Flame Mist */}
-        <canvas
-          ref={canvasRef}
-          width={380}
-          height={210}
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* 2. The Physical Fireplace Chassis (1:1 with photo - Sharp obsidian rectangular box) */}
+    <div className="relative flex flex-col items-center justify-center w-full select-none">
+      {/* 1. Photorealistic 3D Three.js WebGL Fireplace Viewport */}
       <div
         onClick={() => {
           if (onTogglePower) {
@@ -195,224 +548,55 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
             onTogglePower();
           }
         }}
-        className={`relative w-84 sm:w-96 h-52 rounded-2xl border flex flex-col overflow-hidden shadow-2xl transition-all duration-500 z-10 cursor-pointer active:scale-98 ${
-          isDarkMode
-            ? 'bg-[#101114] border-[#25272D] shadow-[0_30px_70px_rgba(0,0,0,0.95)]'
-            : 'bg-[#181A1E] border-[#32363E] shadow-[0_30px_70px_rgba(0,0,0,0.65)]'
-        }`}
-        style={{
-          boxShadow: isOn
-            ? `0 25px 60px -15px rgba(0,0,0,0.9), 0 0 35px ${flameColor}25, inset 0 1px 2px rgba(255,255,255,0.12)`
-            : '0 25px 60px -15px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.06)',
-        }}
+        className="relative w-full flex items-center justify-center cursor-grab active:cursor-grabbing touch-none overflow-visible py-1"
       >
-        {/* Top Recessed Lid with Horizontal Emitter Slot */}
-        <div className="w-full h-7 bg-[#0B0C0E] border-b border-[#202227] flex items-center justify-center px-6 relative">
-          <div className="absolute top-1 inset-x-8 h-[1px] bg-white/5" />
-
-          {/* Recessed Flame Exhaust Slot */}
-          <div
-            className={`w-full max-w-[250px] h-2.5 rounded-full transition-all duration-500 relative flex items-center justify-center ${
-              isOn
-                ? 'bg-amber-300 shadow-[0_0_18px_#F59E0B]'
-                : 'bg-black/95'
-            }`}
-            style={{
-              backgroundColor: isOn ? flameColor : undefined,
-              boxShadow: isOn ? `0 0 22px ${flameColor}` : undefined,
-            }}
-          >
-            {isOn && (
-              <span className="w-4/5 h-1 rounded-full bg-white blur-[0.8px] animate-pulse" />
-            )}
-          </div>
-        </div>
-
-        {/* Front Panoramic Glass Chamber with Stacked Charred Logs (Exact Match with Image 1) */}
-        <div className="relative flex-1 m-3 mb-1.5 rounded-xl bg-[#060709] border border-white/10 overflow-hidden flex flex-col justify-end p-2 shadow-inner">
-          {/* Internal Chamber Fire Backlight & Reflections */}
-          <div
-            className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${
-              isOn ? 'opacity-95' : 'opacity-0'
-            }`}
-            style={{
-              background: `radial-gradient(ellipse at 50% 95%, ${flameColor} 0%, rgba(0,0,0,0.85) 80%)`,
-            }}
-          />
-
-          {/* Glass Specular Reflection Highlight */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-20"
-            style={{
-              background:
-                'linear-gradient(125deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.02) 40%, transparent 60%)',
-            }}
-          />
-
-          {/* Stacked 3D Charred Firewood Logs (1:1 with photo) */}
-          <div className="relative z-10 flex flex-col items-center w-full">
-            <svg
-              viewBox="0 0 280 85"
-              className="w-full h-28 transition-all duration-500"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <defs>
-                <linearGradient id="logCharredWood" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#32343C" />
-                  <stop offset="35%" stopColor="#1C1E23" />
-                  <stop offset="100%" stopColor="#08090B" />
-                </linearGradient>
-                <linearGradient id="logBarkHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#40434D" />
-                  <stop offset="40%" stopColor="#25272E" />
-                  <stop offset="100%" stopColor="#0C0D10" />
-                </linearGradient>
-                <linearGradient id="flameBackglow" x1="0%" y1="100%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="#EF4444" stopOpacity="0.85" />
-                  <stop offset="40%" stopColor="#F59E0B" stopOpacity="0.75" />
-                  <stop offset="85%" stopColor="#FEF08A" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-
-              {/* SOFT VOLUMETRIC INTERNAL FIRE GLOW (Behind the logs) */}
-              {isOn && (
-                <g className="opacity-90">
-                  <ellipse cx="140" cy="55" rx="100" ry="35" fill="url(#flameBackglow)" filter="blur(6px)" />
-                  <ellipse cx="95" cy="45" rx="45" ry="25" fill="url(#flameBackglow)" filter="blur(4px)" className="animate-pulse" />
-                  <ellipse cx="185" cy="45" rx="45" ry="25" fill="url(#flameBackglow)" filter="blur(4px)" className="animate-pulse" />
-                </g>
-              )}
-
-              {/* FLAT CHARCOAL BED (Rugged coal rocks spanning the bottom - 1:1 with photo) */}
-              <g fill="#121316" stroke="#0A0B0D" strokeWidth="1">
-                {/* Individual jagged coal lumps */}
-                <polygon points="15,78 35,68 55,70 65,78 20,82" />
-                <polygon points="50,78 75,66 95,68 110,78 55,82" />
-                <polygon points="98,78 120,67 145,69 160,78 102,82" />
-                <polygon points="150,78 175,66 205,68 220,78 155,82" />
-                <polygon points="210,78 235,67 260,70 270,78 215,82" />
-              </g>
-
-              {/* GLOWING RED & ORANGE COALS BENEATH LOGS */}
-              {isOn && (
-                <>
-                  {/* Broad Fiery Lava Glow Under Coals */}
-                  <rect x="20" y="68" width="240" height="12" rx="6" fill="#EF4444" filter="blur(3px)" className="opacity-95" />
-                  {/* Glowing Orange Fissures Between Rocks */}
-                  <path d="M30 73 L70 71 L110 74 L160 72 L210 74 L255 72" stroke={flameColor} strokeWidth="4.5" strokeLinecap="round" className="animate-pulse" />
-                  <path d="M55 72 L95 70 L145 73 L195 71 L235 73" stroke="#FEF08A" strokeWidth="2" strokeLinecap="round" />
-                  
-                  {/* Molten Sparks & Hot Spots */}
-                  <circle cx="75" cy="71" r="2.5" fill="#FFFBEB" className="animate-ping" />
-                  <circle cx="140" cy="70" r="3" fill="#FEF08A" className="animate-ping" />
-                  <circle cx="215" cy="72" r="2.5" fill="#FFFBEB" className="animate-ping" />
-                </>
-              )}
-
-              {/* LOG 1: LEFT HORIZONTAL CHARRED LOG */}
-              <path
-                d="M30 72 C40 60, 80 56, 125 58 L120 68 C80 66, 45 68, 30 74 Z"
-                fill="url(#logBarkHighlight)"
-                stroke="#08090B"
-                strokeWidth="1.2"
-              />
-              <path d="M45 66 Q80 62 110 64" stroke="#14151B" strokeWidth="1" />
-              <ellipse cx="32" cy="73" rx="5" ry="3" fill="#1A1C22" stroke="#0B0C0E" />
-
-              {/* LOG 2: CENTER HEAVY CHARRED CYLINDER (Signature from photo) */}
-              <path
-                d="M105 60 C120 50, 165 48, 220 52 L215 65 C165 62, 120 62, 105 68 Z"
-                fill="url(#logBarkHighlight)"
-                stroke="#08090B"
-                strokeWidth="1.5"
-              />
-              {/* Bark ridges on Center Log */}
-              <path d="M125 56 Q165 52 205 55" stroke="#121318" strokeWidth="1.5" />
-              <path d="M130 61 Q170 57 200 60" stroke="#121318" strokeWidth="1.2" />
-              {/* Cut Face of Center Log (Facing right, exactly like photo) */}
-              <ellipse cx="218" cy="58" rx="7" ry="10" fill="#24262E" stroke="#0F1014" strokeWidth="1" />
-              <ellipse cx="218" cy="58" rx="4" ry="6" fill="#15171D" />
-              <ellipse cx="218" cy="58" rx="2" ry="3" fill="#0C0D10" />
-
-              {/* LOG 3: RIGHT DIAGONAL CROSSED BRANCH (Rests on top of center log, sloping down) */}
-              <path
-                d="M165 48 L240 68 L230 76 L155 56 Z"
-                fill="url(#logCharredWood)"
-                stroke="#060708"
-                strokeWidth="1.5"
-              />
-              <path d="M175 54 L225 68" stroke="#101116" strokeWidth="1.2" />
-              <ellipse cx="160" cy="52" rx="6" ry="4" fill="#2A2D36" stroke="#0E0F12" transform="rotate(-25 160 52)" />
-
-              {/* LOG 4: CENTER KNOT TIMBER */}
-              <path
-                d="M75 68 C90 62, 130 60, 165 64 L160 72 C125 70, 90 70, 75 74 Z"
-                fill="url(#logCharredWood)"
-                stroke="#060708"
-                strokeWidth="1.2"
-              />
-              <ellipse cx="115" cy="65" rx="5" ry="3" fill="#161820" stroke="#090A0C" />
-            </svg>
-          </div>
-        </div>
-
-        {/* 3 Status Timer LEDs Centered Below Glass Window: 1H  3H  5H (Exact match with photo!) */}
-        <div className="w-full pb-1.5 flex items-center justify-center gap-4 text-[9px] font-mono font-bold tracking-wider select-none">
-          {/* 1H Indicator */}
-          <div className="flex flex-col items-center gap-0.5">
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                isOn && timer === '1h'
-                  ? 'bg-amber-400 shadow-[0_0_8px_#F59E0B]'
-                  : 'bg-zinc-800'
-              }`}
-            />
-            <span className={isOn && timer === '1h' ? 'text-amber-400' : 'text-zinc-600'}>
-              1H
-            </span>
-          </div>
-
-          {/* 3H Indicator */}
-          <div className="flex flex-col items-center gap-0.5">
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                isOn && timer === '3h'
-                  ? 'bg-amber-400 shadow-[0_0_8px_#F59E0B]'
-                  : 'bg-zinc-800'
-              }`}
-            />
-            <span className={isOn && timer === '3h' ? 'text-amber-400' : 'text-zinc-600'}>
-              3H
-            </span>
-          </div>
-
-          {/* 5H Indicator */}
-          <div className="flex flex-col items-center gap-0.5">
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                isOn && timer === '5h'
-                  ? 'bg-amber-400 shadow-[0_0_8px_#F59E0B]'
-                  : 'bg-zinc-800'
-              }`}
-            />
-            <span className={isOn && timer === '5h' ? 'text-amber-400' : 'text-zinc-600'}>
-              5H
-            </span>
-          </div>
-        </div>
+        <div ref={mountRef} className="w-full h-[250px] flex items-center justify-center" />
       </div>
 
-      {/* 3. Mirror Reflection on Table Surface Below Box (1:1 with photo!) */}
-      {isOn && (
-        <div
-          className="w-72 h-8 blur-md rounded-full opacity-60 transition-all duration-500 mt-[-4px] scale-y-[-1]"
-          style={{
-            background: `radial-gradient(ellipse at 50% 50%, #EF4444 0%, ${flameColor} 40%, transparent 80%)`,
-          }}
-        />
-      )}
+      {/* 2. Authentic 1H  3H  5H Status LEDs Below Window (1:1 with photo) */}
+      <div className="w-full flex items-center justify-center gap-6 text-[10px] font-mono font-bold tracking-wider mt-[-6px] select-none">
+        {/* 1H Indicator */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              isOn && timer === '1h'
+                ? 'bg-amber-400 shadow-[0_0_10px_#F59E0B]'
+                : 'bg-zinc-800'
+            }`}
+          />
+          <span className={isOn && timer === '1h' ? 'text-amber-400 font-extrabold' : 'text-zinc-600'}>
+            1H
+          </span>
+        </div>
+
+        {/* 3H Indicator */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              isOn && timer === '3h'
+                ? 'bg-amber-400 shadow-[0_0_10px_#F59E0B]'
+                : 'bg-zinc-800'
+            }`}
+          />
+          <span className={isOn && timer === '3h' ? 'text-amber-400 font-extrabold' : 'text-zinc-600'}>
+            3H
+          </span>
+        </div>
+
+        {/* 5H Indicator */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              isOn && timer === '5h'
+                ? 'bg-amber-400 shadow-[0_0_10px_#F59E0B]'
+                : 'bg-zinc-800'
+            }`}
+          />
+          <span className={isOn && timer === '5h' ? 'text-amber-400 font-extrabold' : 'text-zinc-600'}>
+            5H
+          </span>
+        </div>
+      </div>
 
       {/* Subtitle status badge */}
       <div className="mt-3 flex items-center gap-2">
