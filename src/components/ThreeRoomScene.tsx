@@ -143,7 +143,7 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
 
     // 2. Camera setup: More Zoomed-In by Default (frustumSize: 3.3)
     const aspect = width / height;
-    const frustumSize = 3.3; // Closer, zoomed-in view requested by user!
+    const frustumSize = 3.35; // Focused architectural framing
     const camera = new THREE.OrthographicCamera(
       (-frustumSize * aspect) / 2,
       (frustumSize * aspect) / 2,
@@ -153,8 +153,9 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       100
     );
 
-    camera.position.set(3.8, 3.6, 3.8);
-    camera.lookAt(0, 0.45, -0.2);
+    // Lower camera angle to see the window, balcony door, and desk setup clearly
+    camera.position.set(3.7, 2.65, 3.7);
+    camera.lookAt(0, 0.72, -0.25);
 
     // 3. Renderer setup
     const renderer = new THREE.WebGLRenderer({
@@ -268,29 +269,49 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     // -------------------------------------------------------------
     // BACK WALL DETAILS: WINDOW, BALCONY DOOR, RADIATOR & DRYING RACK
     // -------------------------------------------------------------
-    // 1. Left Square Window with Outdoor Tree View
-    const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.64, 0.04), whiteMat);
+    // 1. Left Square Window with Outdoor Tree View & Sill
+    const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.68, 0.04), whiteMat);
     windowFrame.position.set(-0.85, 1.35, -2.0);
     masterGroup.add(windowFrame);
 
+    // Window Sill
+    const windowSill = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.03, 0.08), whiteMat);
+    windowSill.position.set(-0.85, 0.99, -1.97);
+    masterGroup.add(windowSill);
+
+    // Window Glass with sunny garden view
     const windowGlass = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.56, 0.56),
-      new THREE.MeshBasicMaterial({ color: 0x86efac, transparent: true, opacity: 0.9 })
+      new THREE.PlaneGeometry(0.60, 0.60),
+      new THREE.MeshBasicMaterial({ color: 0x86efac, transparent: true, opacity: 0.92 })
     );
     windowGlass.position.set(-0.85, 1.35, -1.97);
     masterGroup.add(windowGlass);
 
-    // 2. Right Balcony Glass Door
-    const balconyDoorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.58, 1.7, 0.04), whiteMat);
-    balconyDoorFrame.position.set(-0.15, 0.95, -2.0);
+    // Window Crossbars (Mullions)
+    const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.60, 0.02), whiteMat);
+    winCrossV.position.set(-0.85, 1.35, -1.96);
+    masterGroup.add(winCrossV);
+
+    const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.60, 0.02, 0.02), whiteMat);
+    winCrossH.position.set(-0.85, 1.35, -1.96);
+    masterGroup.add(winCrossH);
+
+    // 2. Right Balcony Glass Door with Handle
+    const balconyDoorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.60, 1.76, 0.04), whiteMat);
+    balconyDoorFrame.position.set(-0.15, 0.98, -2.0);
     masterGroup.add(balconyDoorFrame);
 
     const balconyDoorGlass = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.5, 1.6),
-      new THREE.MeshBasicMaterial({ color: 0xbbf7d0, transparent: true, opacity: 0.85 })
+      new THREE.PlaneGeometry(0.52, 1.66),
+      new THREE.MeshBasicMaterial({ color: 0xbbf7d0, transparent: true, opacity: 0.88 })
     );
-    balconyDoorGlass.position.set(-0.15, 0.95, -1.97);
+    balconyDoorGlass.position.set(-0.15, 0.98, -1.97);
     masterGroup.add(balconyDoorGlass);
+
+    // Balcony Door Handle Latch
+    const balconyHandle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.03), metalMat);
+    balconyHandle.position.set(0.11, 0.98, -1.96);
+    masterGroup.add(balconyHandle);
 
     // 3. European Wall Radiator Heater
     const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.44, 0.05), whiteMat);
@@ -493,9 +514,313 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
 
     // -------------------------------------------------------------
     // 3 FRAMED ART POSTERS ON THE LEFT WALL DEAD CENTER (x = -1.38, z = 0.0 midpoint)
+    // Procedural High-Detail Canvas Textures (Cunningham C5-R, Marlboro Senna F1, Ford GT40 Mk IV)
     // -------------------------------------------------------------
+    const createPosterCanvasTexture = (type: 'cunningham' | 'marlboro' | 'ford_gt') => {
+      const W = 512;
+      const H = 768;
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d')!;
+
+      if (type === 'cunningham') {
+        // 1. CUNNINGHAM C5-R (1953 Le Mans #2 - Blue/White)
+        const blueSplit = H * 0.58;
+        ctx.fillStyle = '#1e528b';
+        ctx.fillRect(0, 0, W, blueSplit);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, blueSplit, W, H - blueSplit);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 30px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('CUNNINGHAM C5-R', W / 2, 75);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.font = '500 13px system-ui, sans-serif';
+        ctx.fillText('John Fitch & Phil Walters | Circuit de la Sarthe, June 1953', W / 2, 102);
+
+        // Draw Car
+        ctx.save();
+        ctx.translate(W / 2, 450);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 48, 175, 18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(-160, 20);
+        ctx.quadraticCurveTo(-140, -40, -50, -42);
+        ctx.quadraticCurveTo(0, -38, 50, -42);
+        ctx.quadraticCurveTo(140, -40, 160, 20);
+        ctx.lineTo(165, 45);
+        ctx.quadraticCurveTo(100, 52, 0, 52);
+        ctx.quadraticCurveTo(-100, 52, -165, 45);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Blue stripes
+        ctx.fillStyle = '#1e528b';
+        ctx.fillRect(-18, -40, 10, 90);
+        ctx.fillRect(8, -40, 10, 90);
+
+        // Front Grille
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.ellipse(0, 22, 66, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Fog lamps
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(-42, 22, 9, 0, Math.PI * 2);
+        ctx.arc(42, 22, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Headlights
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(-120, -5, 16, 0, Math.PI * 2);
+        ctx.arc(120, -5, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Windscreen & Driver
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.ellipse(0, -50, 42, 12, 0, 0, Math.PI);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-8, -62, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // #2 decal
+        ctx.fillStyle = '#1e528b';
+        ctx.font = 'bold 36px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('2', -152, 22);
+
+        // Wheels
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-172, 18, 18, 32);
+        ctx.fillRect(154, 18, 18, 32);
+        ctx.restore();
+      } else if (type === 'marlboro') {
+        // 2. MARLBORO AYRTON SENNA MP4/4 COCKPIT
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#537188');
+        grad.addColorStop(0.35, '#7b92a5');
+        grad.addColorStop(0.65, '#9bb0c1');
+        grad.addColorStop(1, '#607274');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.beginPath();
+        ctx.ellipse(W * 0.4, H * 0.3, 220, 90, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Marlboro text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'italic 700 58px "Times New Roman", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Marlboro', W / 2, 260);
+
+        // McLaren monocoque
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(0, 768);
+        ctx.lineTo(0, 480);
+        ctx.lineTo(180, 380);
+        ctx.lineTo(260, 420);
+        ctx.lineTo(W, 600);
+        ctx.lineTo(W, 768);
+        ctx.closePath();
+        ctx.fill();
+
+        // Red chevron
+        ctx.fillStyle = '#e11d48';
+        ctx.beginPath();
+        ctx.moveTo(80, 435);
+        ctx.lineTo(180, 380);
+        ctx.lineTo(210, 440);
+        ctx.lineTo(120, 490);
+        ctx.closePath();
+        ctx.fill();
+
+        // BOSS & Senna
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'italic 600 15px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Senna', 200, 410);
+        ctx.font = '900 22px sans-serif';
+        ctx.fillText('BOSS', 198, 432);
+
+        // Foreground Marlboro
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'italic 900 76px "Times New Roman", serif';
+        ctx.save();
+        ctx.translate(140, 710);
+        ctx.rotate(-0.16);
+        ctx.fillText('Marlboro', 0, 0);
+        ctx.restore();
+
+        // Red foreground chevron
+        ctx.fillStyle = '#e11d48';
+        ctx.beginPath();
+        ctx.moveTo(0, 680);
+        ctx.lineTo(180, 560);
+        ctx.lineTo(280, 630);
+        ctx.lineTo(140, 768);
+        ctx.lineTo(0, 768);
+        ctx.closePath();
+        ctx.fill();
+
+        // Senna Helmet
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(260, 465, 60, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineWidth = 14;
+        ctx.strokeStyle = '#15803d';
+        ctx.beginPath();
+        ctx.arc(260, 465, 60, 0.15, Math.PI - 0.15);
+        ctx.stroke();
+
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = '#1e3a8a';
+        ctx.beginPath();
+        ctx.arc(260, 465, 54, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NACIONAL', 255, 435);
+
+        // Visor
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(220, 452, 85, 34, 10);
+        ctx.fill();
+
+        // Red mirror
+        ctx.fillStyle = '#e11d48';
+        ctx.beginPath();
+        ctx.ellipse(365, 455, 26, 18, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        // 3. FORD GT40 MK IV (1967 Le Mans #1 - Yellow/White)
+        const yellowSplit = H * 0.58;
+        ctx.fillStyle = '#e5a500';
+        ctx.fillRect(0, 0, W, yellowSplit);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, yellowSplit, W, H - yellowSplit);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 30px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('FORD GT40 MK IV', W / 2, 75);
+
+        // Draw GT40 Car
+        ctx.save();
+        ctx.translate(W / 2, 450);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 48, 175, 18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#e5a500';
+        ctx.beginPath();
+        ctx.moveTo(-160, 25);
+        ctx.quadraticCurveTo(-140, -35, -50, -38);
+        ctx.quadraticCurveTo(0, -35, 50, -38);
+        ctx.quadraticCurveTo(140, -35, 160, 25);
+        ctx.lineTo(165, 45);
+        ctx.quadraticCurveTo(100, 52, 0, 52);
+        ctx.quadraticCurveTo(-100, 52, -165, 45);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Black stripes
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-18, -36, 12, 85);
+        ctx.fillRect(6, -36, 12, 85);
+
+        // #1 roundel
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(0, 12, 26, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 32px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('1', 0, 23);
+
+        // Headlamps
+        const drawGT40Lamp = (hx: number, hy: number) => {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(hx, hy, 22, 14, hx < 0 ? -0.2 : 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(hx - 8, hy, 7, 0, Math.PI * 2);
+          ctx.arc(hx + 8, hy, 7, 0, Math.PI * 2);
+          ctx.fill();
+        };
+        drawGT40Lamp(-115, -2);
+        drawGT40Lamp(115, -2);
+
+        // Cockpit
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.moveTo(-50, -36);
+        ctx.quadraticCurveTo(0, -68, 50, -36);
+        ctx.closePath();
+        ctx.fill();
+
+        // Splitter
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-150, 48, 300, 6);
+
+        // Wheels
+        ctx.fillRect(-168, 18, 16, 32);
+        ctx.fillRect(152, 18, 16, 32);
+        ctx.restore();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.generateMipmaps = true;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      return texture;
+    };
+
     const oakFrameMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.6 }); // Light natural birch/oak wood frame
-    const createArtFrame = (x: number, y: number, z: number, w: number, h: number, artColor: number) => {
+    const createArtFrame = (x: number, y: number, z: number, w: number, h: number, texture: THREE.CanvasTexture) => {
       const frameGroup = new THREE.Group();
       frameGroup.position.set(x, y, z);
       frameGroup.rotation.y = Math.PI / 2; // Flat against left wall facing right into room
@@ -515,10 +840,10 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       passePartout.position.z = 0.009;
       frameGroup.add(passePartout);
 
-      // Artwork Print (Blue / Dark Marlboro F1 / Yellow GT3)
+      // Artwork Print Texture
       const artPrint = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ color: artColor })
+        new THREE.MeshBasicMaterial({ map: texture })
       );
       artPrint.position.z = 0.01;
       frameGroup.add(artPrint);
@@ -527,14 +852,14 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     };
 
     // 3 FRAMES DEAD CENTER ON THE LEFT WALL (Midpoint z = 0.0, y = 1.48 - 1.52)
-    // Frame 1: Blue Porsche Racing Poster (z = -0.38)
-    masterGroup.add(createArtFrame(-1.38, 1.48, -0.38, 0.20, 0.32, 0x0284c7));
+    // Frame 1: Cunningham C5-R Le Mans Poster (z = -0.38)
+    masterGroup.add(createArtFrame(-1.38, 1.48, -0.38, 0.20, 0.32, createPosterCanvasTexture('cunningham')));
 
-    // Frame 2: Dark Marlboro McLaren F1 Poster (Dead Center, z = 0.0)
-    masterGroup.add(createArtFrame(-1.38, 1.52, 0.0, 0.24, 0.36, 0x1e293b));
+    // Frame 2: Iconic Marlboro Ayrton Senna McLaren F1 Poster (Dead Center, z = 0.0)
+    masterGroup.add(createArtFrame(-1.38, 1.52, 0.0, 0.24, 0.36, createPosterCanvasTexture('marlboro')));
 
-    // Frame 3: Yellow Porsche GT3 Poster (z = +0.38)
-    masterGroup.add(createArtFrame(-1.38, 1.48, 0.38, 0.20, 0.32, 0xeab308));
+    // Frame 3: Ford GT40 Mk IV Le Mans Poster (z = +0.38)
+    masterGroup.add(createArtFrame(-1.38, 1.48, 0.38, 0.20, 0.32, createPosterCanvasTexture('ford_gt')));
 
     // -------------------------------------------------------------
     // APPLIANCE 3: SMART FLOOR FAN NEXT TO THE BED (Requested by user!)
@@ -791,20 +1116,14 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
         className="w-full h-[255px] cursor-grab active:cursor-grabbing touch-none overflow-hidden"
       />
 
-      {/* Interactive 3D Overlay Badges (Direct Tap Hotspots) */}
-      <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none z-10">
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md bg-black/50 border border-white/15 text-white text-[11px] font-bold">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Interactive 3D Room</span>
-        </div>
-
-        {/* Reset Angle Button */}
+      {/* Minimal Unobtrusive Reset Angle Button */}
+      <div className="absolute top-3 right-3 pointer-events-none z-10">
         <button
           onClick={handleResetAngle}
-          className="pointer-events-auto w-8 h-8 rounded-full backdrop-blur-md bg-black/50 border border-white/15 text-white flex items-center justify-center transition-transform active:scale-90"
+          className="pointer-events-auto w-7 h-7 rounded-full backdrop-blur-md bg-black/40 border border-white/10 text-white/80 hover:text-white flex items-center justify-center transition-all active:scale-90 shadow-sm"
           title="Reset View Angle"
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={13} />
         </button>
       </div>
 

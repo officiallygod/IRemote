@@ -117,26 +117,35 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
           isDarkMode={isDarkMode}
         />
 
-        {/* Quick Mood Pills */}
-        <div className="flex items-center justify-center gap-2 py-1 overflow-x-auto scrollbar-none">
-          {SUNSET_LAMP_PRESETS.map((preset) => {
-            const isSelected = state.moodName === preset.name;
-            return (
-              <button
-                key={preset.id}
-                onClick={() => handleSelectMood(preset.name, preset.colorHex, preset.irHex)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border ${
-                  isSelected
-                    ? 'bg-amber-400 text-black border-amber-400 shadow-glow-amber scale-105'
-                    : isDarkMode
-                    ? 'bg-surface text-accent-muted border-surface-border'
-                    : 'bg-white text-slate-600 border-slate-200'
-                }`}
-              >
-                {preset.name}
-              </button>
-            );
-          })}
+        {/* Quick Mood Pills (Smooth Horizontal Momentum Scroll) */}
+        <div className="relative -mx-5 px-5">
+          <div className="flex items-center gap-2 py-1.5 overflow-x-auto scrollbar-none scroll-smooth overscroll-x-contain">
+            {SUNSET_LAMP_PRESETS.map((preset) => {
+              const isSelected = state.moodName === preset.name;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={(e) => {
+                    handleSelectMood(preset.name, preset.colorHex, preset.irHex);
+                    e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border active:scale-95 ${
+                    isSelected
+                      ? 'bg-amber-400 text-black border-amber-400 shadow-glow-amber scale-105'
+                      : isDarkMode
+                      ? 'bg-surface text-accent-muted border-surface-border hover:text-white hover:border-white/20'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 shadow-sm'
+                  }`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0 shadow-sm"
+                    style={{ backgroundColor: preset.colorHex }}
+                  />
+                  <span>{preset.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Upward ArcSlider (∩ shape, zero overlap) */}

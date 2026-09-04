@@ -120,31 +120,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 2. Scrollable Body Content (Scrolls smoothly underneath the persistent nav bar) */}
       <main className="flex-1 overflow-y-auto px-5 pt-3 pb-36 space-y-4 overscroll-contain">
-        {/* Zone Pill Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
-          {ZONES.map((zone) => {
-            const isActive = selectedZone === zone;
-            return (
-              <button
-                key={zone}
-                onClick={() => {
-                  hapticFeedback.tick();
-                  setSelectedZone(zone);
-                }}
-                className={`h-8 px-4 rounded-full text-xs font-bold shrink-0 transition-all border ${
-                  isActive
-                    ? isDarkMode
-                      ? 'bg-white text-[#121214] border-white shadow-md'
-                      : 'bg-slate-900 text-white border-slate-900 shadow-md'
-                    : isDarkMode
-                    ? 'bg-surface text-accent-muted border-surface-border hover:text-white'
-                    : 'bg-white text-slate-600 border-slate-200 shadow-sm'
-                }`}
-              >
-                {zone}
-              </button>
-            );
-          })}
+        {/* Zone Pill Bar (Smooth Edge-to-Edge Scroll) */}
+        <div className="relative -mx-5 px-5">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 scroll-smooth overscroll-x-contain">
+            {ZONES.map((zone) => {
+              const isActive = selectedZone === zone;
+              return (
+                <button
+                  key={zone}
+                  onClick={(e) => {
+                    hapticFeedback.tick();
+                    setSelectedZone(zone);
+                    e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                  }}
+                  className={`h-8 px-4 rounded-full text-xs font-bold shrink-0 transition-all border active:scale-95 ${
+                    isActive
+                      ? isDarkMode
+                        ? 'bg-white text-[#121214] border-white shadow-md'
+                        : 'bg-slate-900 text-white border-slate-900 shadow-md'
+                      : isDarkMode
+                      ? 'bg-surface text-accent-muted border-surface-border hover:text-white'
+                      : 'bg-white text-slate-600 border-slate-200 shadow-sm'
+                  }`}
+                >
+                  {zone}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Interactive 3D Room Scene (Bruno Simon isometric style, procedural Three.js) */}
