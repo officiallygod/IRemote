@@ -34,6 +34,28 @@ function createSoftFlameTexture(): THREE.CanvasTexture {
   return texture;
 }
 
+// Procedural Dissipating Humidifier Vapor / Smoke Mist Texture
+function createVaporMistTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+  grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.65)');
+  grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.25)');
+  grad.addColorStop(0.8, 'rgba(255, 255, 255, 0.06)');
+  grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
   isOn,
   isSmokeOn,
@@ -63,6 +85,17 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     baseZ: number;
     speedY: number;
     speedX: number;
+    phase: number;
+    scaleBase: number;
+  }>>([]);
+
+  const mistSpritesRef = useRef<Array<{
+    sprite: THREE.Sprite;
+    baseX: number;
+    baseZ: number;
+    speedY: number;
+    curlFreq: number;
+    driftX: number;
     phase: number;
     scaleBase: number;
   }>>([]);
@@ -273,8 +306,9 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     fissure2.position.set(0.14, -0.11, 0.15);
     chassisGroup.add(fissure2);
 
-    // Shared Procedural Soft Flame Texture
+    // Shared Procedural Soft Flame and Vapor Mist Textures
     const flameTexture = createSoftFlameTexture();
+    const vaporTexture = createVaporMistTexture();
 
     // -------------------------------------------------------------------------
     // 9. LAYER 1: FLAMES INSIDE THE FIREPLACE CHAMBER (Licking around the wood logs!)
@@ -325,7 +359,7 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     insideFlameSpritesRef.current = insideSprites;
 
     // -------------------------------------------------------------------------
-    // 10. LAYER 2: TOP VOLUMETRIC LEAPING FLAME MIST (Rising high out of the slot)
+    // 10. LAYER 2: TOP VOLUMETRIC LEAPING FLAME MIST
     // -------------------------------------------------------------------------
     const topSpritesGroup = new THREE.Group();
     masterGroup.add(topSpritesGroup);
@@ -340,7 +374,7 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
       scaleBase: number;
     }> = [];
 
-    const numTopSprites = 38;
+    const numTopSprites = 36;
     for (let i = 0; i < numTopSprites; i++) {
       const spMat = new THREE.SpriteMaterial({
         map: flameTexture,
@@ -354,10 +388,10 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
       const sprite = new THREE.Sprite(spMat);
       const spawnX = (Math.random() - 0.5) * 0.78;
       const spawnZ = (Math.random() - 0.5) * 0.03;
-      const spawnY = 0.3 + Math.random() * 0.45;
+      const spawnY = 0.3 + Math.random() * 0.4;
       sprite.position.set(spawnX, spawnY, spawnZ);
 
-      const scaleBase = 0.22 + Math.random() * 0.2;
+      const scaleBase = 0.22 + Math.random() * 0.18;
       sprite.scale.set(scaleBase, scaleBase * 1.5, 1);
 
       topSpritesGroup.add(sprite);
@@ -374,7 +408,59 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     }
     topFlameSpritesRef.current = topSprites;
 
-    // 11. Tabletop Mirror Reflection Plane below the fireplace
+    // -------------------------------------------------------------------------
+    // 11. LAYER 3: DISSIPATING HUMIDIFIER AIR / SMOKE MIST (Billowing & Dissipating into Room)
+    // -------------------------------------------------------------------------
+    const mistSpritesGroup = new THREE.Group();
+    masterGroup.add(mistSpritesGroup);
+
+    const mistSprites: Array<{
+      sprite: THREE.Sprite;
+      baseX: number;
+      baseZ: number;
+      speedY: number;
+      curlFreq: number;
+      driftX: number;
+      phase: number;
+      scaleBase: number;
+    }> = [];
+
+    const numMistSprites = 42;
+    for (let i = 0; i < numMistSprites; i++) {
+      const mistMat = new THREE.SpriteMaterial({
+        map: vaporTexture,
+        color: new THREE.Color(flameColor),
+        transparent: true,
+        opacity: 0.45,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+
+      const sprite = new THREE.Sprite(mistMat);
+      const spawnX = (Math.random() - 0.5) * 0.76;
+      const spawnZ = (Math.random() - 0.5) * 0.06;
+      const spawnY = 0.32 + Math.random() * 0.75;
+      sprite.position.set(spawnX, spawnY, spawnZ);
+
+      const scaleBase = 0.28 + Math.random() * 0.22;
+      sprite.scale.set(scaleBase, scaleBase * 1.2, 1);
+
+      mistSpritesGroup.add(sprite);
+
+      mistSprites.push({
+        sprite,
+        baseX: spawnX,
+        baseZ: spawnZ,
+        speedY: 0.005 + Math.random() * 0.008,
+        curlFreq: 1.4 + Math.random() * 1.6,
+        driftX: (Math.random() - 0.5) * 0.002,
+        phase: Math.random() * Math.PI * 2,
+        scaleBase,
+      });
+    }
+    mistSpritesRef.current = mistSprites;
+
+    // 12. Tabletop Mirror Reflection Plane below the fireplace
     const reflectionMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(1.4, 0.6),
       new THREE.MeshBasicMaterial({
@@ -388,7 +474,7 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     reflectionMesh.rotation.x = -Math.PI / 2;
     masterGroup.add(reflectionMesh);
 
-    // 12. Interactive Pointer Drag for 3D Orbit
+    // 13. Interactive Pointer Drag for 3D Orbit
     const handlePointerDown = (e: PointerEvent) => {
       isDragging.current = true;
       prevPointerX.current = e.clientX;
@@ -410,7 +496,7 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
 
-    // 13. Visibility Observer (0% CPU when off-screen)
+    // 14. Visibility Observer (0% CPU when off-screen)
     let isVisible = true;
     const observer = new IntersectionObserver(([entry]) => {
       isVisible = entry.isIntersecting;
@@ -435,7 +521,6 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
       if (isOn) {
         insideFlamesGroup.visible = true;
         insideSprites.forEach((sp) => {
-          // Dynamic flickering and swaying
           const flick = Math.sin(flameTime * 5 + sp.phase);
           const scaleY = sp.scaleBase * (1.3 + flick * 0.4);
           const scaleX = sp.scaleBase * (1.0 - flick * 0.15);
@@ -469,10 +554,33 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
             sp.sprite.position.y = 0.3;
             sp.baseX = (Math.random() - 0.5) * 0.78;
           } else {
-            // Billowing expansion and soft fade out
             const scale = sp.scaleBase * (1.0 + progress * 0.9);
             sp.sprite.scale.set(scale, scale * 1.5, 1);
             sp.sprite.material.opacity = (1.0 - progress) * 0.8;
+          }
+        });
+
+        // Animate 3: DISSIPATING HUMIDIFIER VAPOR SMOKE (Rising and dispersing into room air)
+        mistSpritesGroup.visible = true;
+        mistSprites.forEach((sp) => {
+          sp.sprite.position.y += sp.speedY;
+          // Smooth turbulent curl noise + atmospheric expansion
+          const progress = (sp.sprite.position.y - 0.3) / 0.85;
+
+          if (progress >= 1.0) {
+            sp.sprite.position.y = 0.31;
+            sp.baseX = (Math.random() - 0.5) * 0.76;
+          } else {
+            const curl = Math.sin(flameTime * sp.curlFreq + sp.phase) * (0.03 + progress * 0.12);
+            sp.sprite.position.x = sp.baseX + curl;
+
+            // Billowing expansion as mist dissipates into air
+            const expandScale = sp.scaleBase * (1.0 + progress * 2.6);
+            sp.sprite.scale.set(expandScale, expandScale * 1.3, 1);
+
+            // Dissipating bell curve: soft entry, high opacity in light beam, feathering to zero in room air
+            const bell = Math.sin(Math.min(Math.PI, progress * Math.PI));
+            sp.sprite.material.opacity = bell * (0.55 - progress * 0.25);
           }
         });
 
@@ -482,6 +590,7 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
         }
       } else {
         topSpritesGroup.visible = false;
+        mistSpritesGroup.visible = false;
         if (pointLightRef.current) {
           pointLightRef.current.intensity = isOn ? 2.0 : 0;
         }
@@ -533,6 +642,11 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     }
     if (topFlameSpritesRef.current) {
       topFlameSpritesRef.current.forEach((sp) => {
+        sp.sprite.material.color.set(flameColor);
+      });
+    }
+    if (mistSpritesRef.current) {
+      mistSpritesRef.current.forEach((sp) => {
         sp.sprite.material.color.set(flameColor);
       });
     }
@@ -610,7 +724,7 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
             isDarkMode ? 'text-accent-muted' : 'text-slate-600'
           }`}
         >
-          {isOn ? `${flameColorName} • ${isSmokeOn ? 'Flame Mist Active' : 'Light Only'}` : 'Powered Off'}
+          {isOn ? (isSmokeOn ? 'Flame & Mist Active' : 'Flame Light Active') : 'Powered Off'}
         </span>
       </div>
     </div>

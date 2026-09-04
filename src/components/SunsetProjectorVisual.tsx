@@ -13,6 +13,41 @@ interface SunsetProjectorVisualProps {
   isDarkMode?: boolean;
 }
 
+function getSunsetGradients(hexColor: string) {
+  let c = hexColor.replace('#', '');
+  if (c.length === 3) c = c.split('').map((ch) => ch + ch).join('');
+  const num = parseInt(c, 16) || 0xfb923c;
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+
+  // Luminous white-tinted center core
+  const coreR = Math.min(255, Math.round(r * 0.35 + 255 * 0.65));
+  const coreG = Math.min(255, Math.round(g * 0.35 + 255 * 0.65));
+  const coreB = Math.min(255, Math.round(b * 0.35 + 255 * 0.65));
+  const core = `rgb(${coreR}, ${coreG}, ${coreB})`;
+
+  // Inner vibrant glow
+  const innerR = Math.min(255, Math.round(r * 0.85 + 255 * 0.15));
+  const innerG = Math.min(255, Math.round(g * 0.85 + 255 * 0.15));
+  const innerB = Math.min(255, Math.round(b * 0.85 + 255 * 0.15));
+  const inner = `rgb(${innerR}, ${innerG}, ${innerB})`;
+
+  // Primary selected color
+  const main = `rgb(${r}, ${g}, ${b})`;
+
+  // Chromatic outer ring (optical dispersion)
+  const outerR = Math.min(255, Math.max(0, Math.round(r * 0.65 + b * 0.35)));
+  const outerG = Math.min(255, Math.max(0, Math.round(g * 0.55 + r * 0.35)));
+  const outerB = Math.min(255, Math.max(0, Math.round(b * 0.75 + g * 0.25)));
+  const outer = `rgb(${outerR}, ${outerG}, ${outerB})`;
+
+  const rim = `rgba(${r}, ${g}, ${b}, 0.35)`;
+  const glow = `rgba(${r}, ${g}, ${b}, 0.55)`;
+
+  return { core, inner, main, outer, rim, glow };
+}
+
 export const SunsetProjectorVisual: React.FC<SunsetProjectorVisualProps> = ({
   isOn,
   onTogglePower,
@@ -27,12 +62,13 @@ export const SunsetProjectorVisual: React.FC<SunsetProjectorVisualProps> = ({
     onTogglePower();
   };
 
+  const grad = getSunsetGradients(color);
   const haloOpacity = isOn ? Math.max(0.3, (brightness / 100) * 0.98) : 0;
   const haloScale = isOn ? 0.9 + (brightness / 100) * 0.2 : 0.75;
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full py-4 select-none overflow-visible">
-      {/* 1. Luminous Circular Sun Projection Disc (Matching Image 1) */}
+      {/* 1. Luminous Circular Sun Projection Disc with Multi-Shade Chromatic Dispersion */}
       <div className="absolute top-1 left-1/2 -translate-x-1/2 w-[310px] h-[310px] pointer-events-none -z-10 flex items-center justify-center">
         <motion.div
           animate={{
@@ -42,9 +78,9 @@ export const SunsetProjectorVisual: React.FC<SunsetProjectorVisualProps> = ({
           transition={{ duration: 0.35, ease: 'easeOut' }}
           className="w-full h-full rounded-full transition-all duration-500 origin-center"
           style={{
-            background: `radial-gradient(circle, #EF4444 0%, #F97316 35%, #FBBF24 70%, #FDE047 88%, transparent 98%)`,
+            background: `radial-gradient(circle, ${grad.core} 0%, ${grad.inner} 25%, ${grad.main} 55%, ${grad.outer} 78%, ${grad.rim} 90%, transparent 99%)`,
             filter: 'blur(10px)',
-            boxShadow: isOn ? `0 0 70px 25px rgba(249, 115, 22, 0.45)` : 'none',
+            boxShadow: isOn ? `0 0 80px 28px ${grad.glow}` : 'none',
           }}
         />
 
@@ -53,7 +89,7 @@ export const SunsetProjectorVisual: React.FC<SunsetProjectorVisualProps> = ({
           <div
             className="absolute inset-0 rounded-full blur-3xl opacity-60 pointer-events-none"
             style={{
-              background: `radial-gradient(circle, #F97316 20%, #EF4444 60%, transparent 80%)`,
+              background: `radial-gradient(circle, ${grad.main} 20%, ${grad.outer} 60%, transparent 80%)`,
             }}
           />
         )}
@@ -74,7 +110,7 @@ export const SunsetProjectorVisual: React.FC<SunsetProjectorVisualProps> = ({
             }`}
             style={{
               boxShadow: isOn
-                ? `0 0 35px 5px rgba(249, 115, 22, 0.7), inset 0 0 15px rgba(255,255,255,0.4)`
+                ? `0 0 35px 5px ${grad.glow}, inset 0 0 15px rgba(255,255,255,0.4)`
                 : '0 8px 20px rgba(0,0,0,0.3)',
             }}
           >
@@ -83,7 +119,7 @@ export const SunsetProjectorVisual: React.FC<SunsetProjectorVisualProps> = ({
               className="w-16 h-16 rounded-full transition-all duration-300 flex items-center justify-center relative overflow-hidden"
               style={{
                 background: isOn
-                  ? `radial-gradient(circle at 40% 40%, #FEF08A 0%, #F97316 55%, #DC2626 90%)`
+                  ? `radial-gradient(circle at 40% 40%, ${grad.core} 0%, ${grad.main} 55%, ${grad.outer} 90%)`
                   : isDarkMode
                   ? 'radial-gradient(circle at 40% 40%, #3F3F46 0%, #18181B 80%)'
                   : 'radial-gradient(circle at 40% 40%, #E2E8F0 0%, #94A3B8 80%)',

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Palette, ChevronDown, ChevronUp } from 'lucide-react';
 import { SunsetProjectorVisual } from '../components/SunsetProjectorVisual';
 import { ArcSlider } from '../components/ArcSlider';
 import { AestheticColorPicker } from '../components/AestheticColorPicker';
-import { IrKeyFinderModal } from '../components/IrKeyFinderModal';
 import { RGB_LED_CONTROLS, SUNSET_LAMP_PRESETS, getSavedSunsetOffCode } from '../data/rgbLedCodes';
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
@@ -27,8 +26,7 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
   isDarkMode = true,
 }) => {
   const [showColorPicker, setShowColorPicker] = useState(true);
-  const [showKeyHunter, setShowKeyHunter] = useState(false);
-  const [confirmedOffCode, setConfirmedOffCode] = useState(getSavedSunsetOffCode());
+  const [confirmedOffCode] = useState(getSavedSunsetOffCode());
 
   const handleTogglePower = () => {
     hapticFeedback.click();
@@ -87,20 +85,22 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
           <h2 className="text-base font-extrabold tracking-tight">Sunset Lamp</h2>
         </div>
 
-        {/* Key Hunter Button */}
+        {/* Color Palette Toggle Button */}
         <button
           onClick={() => {
             hapticFeedback.tick();
-            setShowKeyHunter(true);
+            setShowColorPicker(!showColorPicker);
           }}
           className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
-            isDarkMode
-              ? 'bg-amber-400/10 border-amber-400/30 text-amber-400 hover:bg-amber-400/20'
-              : 'bg-amber-50 border-amber-300 text-amber-600 shadow-sm'
+            showColorPicker
+              ? 'bg-amber-400 text-black border-amber-400 shadow-sm'
+              : isDarkMode
+              ? 'bg-surface border-surface-border text-accent-muted hover:text-white'
+              : 'bg-white border-slate-200 text-slate-600 shadow-sm'
           }`}
-          title="Key Hunter (Test Power & Color Codes)"
+          title="Color Palette"
         >
-          <Zap size={18} />
+          <Palette size={18} />
         </button>
       </header>
 
@@ -193,15 +193,6 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
           )}
         </div>
       </main>
-
-      {/* Interactive Key Hunter Modal */}
-      <IrKeyFinderModal
-        isOpen={showKeyHunter}
-        onClose={() => setShowKeyHunter(false)}
-        targetDevice="sunset"
-        isDarkMode={isDarkMode}
-        onCodeSaved={(newOffCode) => setConfirmedOffCode(newOffCode)}
-      />
     </div>
   );
 };

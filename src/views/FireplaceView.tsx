@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Power, Wind, Clock, Sparkles, Zap } from 'lucide-react';
+import { ArrowLeft, Power, Wind, Clock, Sparkles } from 'lucide-react';
 import { FireplaceFlameVisual } from '../components/FireplaceFlameVisual';
-import { IrKeyFinderModal } from '../components/IrKeyFinderModal';
 import { FIREPLACE_CODES, getSavedFireplacePowerCode, getSavedFireplaceTimerCode } from '../data/fireplaceCodes';
 import { irBlaster } from '../services/irBlaster';
 import { hapticFeedback } from '../services/haptics';
@@ -21,16 +20,6 @@ interface FireplaceViewProps {
   isDarkMode?: boolean;
 }
 
-// 6 authentic flame colors from product photo
-export const FIREPLACE_FLAME_COLORS = [
-  { name: 'Crimson Flame', color: '#EF4444', label: 'Red' },
-  { name: 'Golden Amber', color: '#F59E0B', label: 'Gold' },
-  { name: 'Emerald Fire', color: '#10B981', label: 'Green' },
-  { name: 'Glacier Aqua', color: '#06B6D4', label: 'Cyan' },
-  { name: 'Cobalt Blue', color: '#2563EB', label: 'Blue' },
-  { name: 'Amethyst Violet', color: '#9333EA', label: 'Purple' },
-];
-
 const TIMER_STEPS = ['Off', '1h', '3h', '5h', 'ON'];
 
 export const FireplaceView: React.FC<FireplaceViewProps> = ({
@@ -39,10 +28,8 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
   onUpdateState,
   isDarkMode = true,
 }) => {
-  const [showKeyHunter, setShowKeyHunter] = useState(false);
-  const [hunterMode, setHunterMode] = useState<'power' | 'timer'>('power');
-  const [confirmedPowerCode, setConfirmedPowerCode] = useState(getSavedFireplacePowerCode());
-  const [confirmedTimerCode, setConfirmedTimerCode] = useState(getSavedFireplaceTimerCode());
+  const [confirmedPowerCode] = useState(getSavedFireplacePowerCode());
+  const [confirmedTimerCode] = useState(getSavedFireplaceTimerCode());
 
   // Button 1: ON / OFF (Top-Left)
   const handleTogglePower = () => {
@@ -70,16 +57,10 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
   };
 
   // Button 4: Toggle fireplace light effect (Bottom-Right) -> 0xC2E238C7 (Confirmed working!)
-  const handleCycleFlameEffect = (targetColor?: typeof FIREPLACE_FLAME_COLORS[0]) => {
+  const handleToggleFlameEffect = () => {
     hapticFeedback.click();
-    if (targetColor) {
-      onUpdateState({ flameColorName: targetColor.name, flameColor: targetColor.color, isOn: true });
-    } else {
-      const curIdx = FIREPLACE_FLAME_COLORS.findIndex((c) => c.name === state.flameColorName);
-      const next = FIREPLACE_FLAME_COLORS[(curIdx + 1) % FIREPLACE_FLAME_COLORS.length];
-      onUpdateState({ flameColorName: next.name, flameColor: next.color, isOn: true });
-    }
-    // Verified 0xC2E238C7 wakes the lamp from an off state and changes colors
+    onUpdateState({ isOn: true });
+    // Verified 0xC2E238C7 wakes the lamp from an off state and toggles light effect
     irBlaster.sendNec(FIREPLACE_CODES.changeColor.hex, 'Toggle Light Effect', 'Fireplace');
   };
 
@@ -117,21 +98,7 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
           <h2 className="text-base font-extrabold tracking-tight">Flame Humidifier</h2>
         </div>
 
-        {/* Key Hunter Button for 0xC2E2 */}
-        <button
-          onClick={() => {
-            hapticFeedback.tick();
-            setShowKeyHunter(true);
-          }}
-          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-90 ${
-            isDarkMode
-              ? 'bg-amber-400/10 border-amber-400/30 text-amber-400 hover:bg-amber-400/20'
-              : 'bg-amber-50 border-amber-300 text-amber-600 shadow-sm'
-          }`}
-          title="Key Hunter (Test Power Candidates)"
-        >
-          <Zap size={18} />
-        </button>
+        <div className="w-10 h-10" />
       </header>
 
       {/* 2. Scrollable Body Content (Scrolls smoothly underneath the persistent nav bar) */}
@@ -147,27 +114,43 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
           isDarkMode={isDarkMode}
         />
 
-        {/* Physical Matte Black Pebble Remote */}
-        <div className="flex flex-col items-center py-2">
+        {/* Physical Remote Control Container (1:1 with user's hardware remote with Light & Dark Modes) */}
+        <div className="flex justify-center w-full py-2">
           <div
-            className="w-56 h-[300px] rounded-[44px] p-5 shadow-2xl flex flex-col justify-between items-center border border-white/10 select-none relative"
+            className={`w-[216px] h-[290px] rounded-[44px] py-5 px-5 shadow-2xl flex flex-col justify-between items-center border select-none relative transition-all ${
+              isDarkMode
+                ? 'border-white/10'
+                : 'border-slate-200/90'
+            }`}
             style={{
-              background: 'linear-gradient(155deg, #32373E 0%, #1A1C20 100%)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 2px 3px rgba(255, 255, 255, 0.12)',
+              background: isDarkMode
+                ? 'linear-gradient(155deg, #2D3239 0%, #17191D 100%)'
+                : 'linear-gradient(155deg, #FFFFFF 0%, #EDF2F7 100%)',
+              boxShadow: isDarkMode
+                ? '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 2px 3px rgba(255, 255, 255, 0.12)'
+                : '0 25px 50px -12px rgba(0, 0, 0, 0.12), inset 0 2px 3px rgba(255, 255, 255, 0.9)',
             }}
           >
             {/* Top IR Emitter / Recessed Notch */}
-            <div className="w-10 h-1.5 bg-zinc-700 rounded-full" />
+            <div
+              className={`w-12 h-1.5 rounded-full shrink-0 ${
+                isDarkMode ? 'bg-zinc-700/80' : 'bg-slate-300'
+              }`}
+            />
 
-            {/* 4 Round Rubberized Buttons Grid */}
-            <div className="grid grid-cols-2 gap-5 w-full max-w-[184px] my-auto">
+            {/* 4 Round Rubberized Buttons Grid - Perfectly Symmetrical & Centered */}
+            <div className="grid grid-cols-2 gap-4 place-items-center justify-center my-auto">
               {/* Button 1: ON / OFF (Top-Left) */}
               <button
                 onClick={handleTogglePower}
-                className={`w-16 h-16 rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border ${
+                className={`w-[66px] h-[66px] rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border ${
                   state.isOn
-                    ? 'bg-white text-black border-white shadow-glow-amber'
-                    : 'bg-[#22252A] text-zinc-300 border-zinc-700/80 hover:text-white'
+                    ? isDarkMode
+                      ? 'bg-white text-black border-white shadow-glow-amber'
+                      : 'bg-slate-900 text-white border-slate-900 shadow-md'
+                    : isDarkMode
+                    ? 'bg-[#22252A] text-zinc-300 border-zinc-700/80 hover:text-white'
+                    : 'bg-slate-100 text-slate-700 border-slate-200/90 hover:text-slate-900 hover:bg-slate-200 shadow-sm'
                 }`}
                 title={`ON / OFF (0x${confirmedPowerCode})`}
               >
@@ -177,10 +160,12 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
               {/* Button 2: Switch fog light effect (Top-Right) -> 0xC2E29867 */}
               <button
                 onClick={handleToggleFog}
-                className={`w-16 h-16 rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border ${
+                className={`w-[66px] h-[66px] rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border ${
                   state.isSmokeOn
                     ? 'bg-sky-400 text-black border-sky-300 shadow-glow-cyan'
-                    : 'bg-[#22252A] text-zinc-300 border-zinc-700/80 hover:text-white'
+                    : isDarkMode
+                    ? 'bg-[#22252A] text-zinc-300 border-zinc-700/80 hover:text-white'
+                    : 'bg-slate-100 text-slate-700 border-slate-200/90 hover:text-slate-900 hover:bg-slate-200 shadow-sm'
                 }`}
                 title="Switch fog light effect (0xC2E29867)"
               >
@@ -190,7 +175,11 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
               {/* Button 3: Timing 4 Timer (Bottom-Left) */}
               <button
                 onClick={handleCycleTimer}
-                className="w-16 h-16 rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border bg-[#22252A] text-zinc-300 border-zinc-700/80 hover:text-white"
+                className={`w-[66px] h-[66px] rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border ${
+                  isDarkMode
+                    ? 'bg-[#22252A] text-zinc-300 border-zinc-700/80 hover:text-white'
+                    : 'bg-slate-100 text-slate-700 border-slate-200/90 hover:text-slate-900 hover:bg-slate-200 shadow-sm'
+                }`}
                 title="Timing 4 Timer (1h / 3h / 5h / ON)"
               >
                 <Clock size={20} strokeWidth={2.5} />
@@ -199,8 +188,12 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
 
               {/* Button 4: Toggle fireplace light effect (Bottom-Right) -> 0xC2E238C7 */}
               <button
-                onClick={() => handleCycleFlameEffect()}
-                className="w-16 h-16 rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border bg-[#22252A] text-amber-400 border-zinc-700/80 hover:border-amber-400"
+                onClick={handleToggleFlameEffect}
+                className={`w-[66px] h-[66px] rounded-full flex flex-col items-center justify-center active:scale-90 transition-all shadow-xl border ${
+                  isDarkMode
+                    ? 'bg-[#22252A] text-amber-400 border-zinc-700/80 hover:border-amber-400'
+                    : 'bg-slate-100 text-amber-500 border-slate-200/90 hover:border-amber-400 shadow-sm'
+                }`}
                 title="Toggle fireplace light effect (0xC2E238C7 - Wakes from off)"
               >
                 <Sparkles size={22} strokeWidth={2.5} />
@@ -208,58 +201,16 @@ export const FireplaceView: React.FC<FireplaceViewProps> = ({
             </div>
 
             {/* Bottom Grip Branding */}
-            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-mono font-semibold">
+            <span
+              className={`text-[9px] uppercase tracking-widest font-mono font-semibold shrink-0 ${
+                isDarkMode ? 'text-zinc-500' : 'text-slate-400'
+              }`}
+            >
               Flame Remote
             </span>
           </div>
         </div>
-
-        {/* 6 Authentic Flame Color Presets */}
-        <div className="flex flex-col items-center gap-2 pt-1">
-          <span
-            className={`text-[10px] font-semibold tracking-wider uppercase ${
-              isDarkMode ? 'text-accent-muted' : 'text-slate-500'
-            }`}
-          >
-            Flame Color Modes (0xC2E238C7 • Wakes from off)
-          </span>
-
-          <div className="grid grid-cols-6 gap-2 w-full">
-            {FIREPLACE_FLAME_COLORS.map((item) => {
-              const isSelected = state.flameColorName === item.name;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => handleCycleFlameEffect(item)}
-                  className={`h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90 shadow-md border ${
-                    isSelected ? 'ring-2 ring-white scale-105' : 'border-white/10'
-                  }`}
-                  style={{
-                    backgroundColor: item.color,
-                    boxShadow: `0 4px 12px ${item.color}40`,
-                  }}
-                  title={item.name}
-                >
-                  {isSelected && <span className="w-2 h-2 rounded-full bg-white drop-shadow-md" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </main>
-
-      {/* Interactive Key Hunter Modal for Address 0xC2E2 */}
-      <IrKeyFinderModal
-        isOpen={showKeyHunter}
-        onClose={() => setShowKeyHunter(false)}
-        targetDevice="fireplace"
-        initialSearchMode={hunterMode}
-        isDarkMode={isDarkMode}
-        onCodeSaved={(code) => {
-          setConfirmedPowerCode(getSavedFireplacePowerCode());
-          setConfirmedTimerCode(getSavedFireplaceTimerCode());
-        }}
-      />
     </div>
   );
 };

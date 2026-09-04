@@ -81,11 +81,41 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const fanBladesRef = useRef<THREE.Group | null>(null);
+  const fanRingRef = useRef<THREE.Mesh | null>(null);
   const sunsetLightRef = useRef<THREE.PointLight | null>(null);
   const sunsetHaloRef = useRef<THREE.Mesh | null>(null);
   const bedsideLightRef = useRef<THREE.PointLight | null>(null);
   const bedsideDomeRef = useRef<THREE.Mesh | null>(null);
   const fireplaceFlameRef = useRef<THREE.Mesh | null>(null);
+
+  // Live state refs
+  const isSunsetOnRef = useRef(isSunsetOn);
+  const isBedsideOnRef = useRef(isBedsideOn);
+  const isFanOnRef = useRef(isFanOn);
+  const fanSpeedRef = useRef(fanSpeed);
+  const isFireplaceOnRef = useRef(isFireplaceOn);
+  const sunsetColorRef = useRef(sunsetColor);
+  const fireplaceColorRef = useRef(fireplaceColor);
+
+  // Smooth dynamic physics & light transition state refs
+  const currentFanVelocity = useRef(isFanOn ? (fanSpeed === 1 ? 0.15 : fanSpeed === 2 ? 0.3 : 0.55) : 0);
+  const currentFanGlow = useRef(isFanOn ? 0.8 : 0);
+  const currentSunsetIntensity = useRef(isSunsetOn ? 2.8 : 0);
+  const currentSunsetHaloOpacity = useRef(isSunsetOn ? 0.95 : 0);
+  const currentBedsideIntensity = useRef(isBedsideOn ? 2.0 : 0);
+  const currentBedsideEmissive = useRef(isBedsideOn ? 0.9 : 0);
+  const currentFlameOpacity = useRef(isFireplaceOn ? 0.88 : 0);
+
+  // Sync props to live animation refs
+  useEffect(() => {
+    isSunsetOnRef.current = isSunsetOn;
+    isBedsideOnRef.current = isBedsideOn;
+    isFanOnRef.current = isFanOn;
+    fanSpeedRef.current = fanSpeed;
+    isFireplaceOnRef.current = isFireplaceOn;
+    sunsetColorRef.current = sunsetColor;
+    fireplaceColorRef.current = fireplaceColor;
+  }, [isSunsetOn, isBedsideOn, isFanOn, fanSpeed, isFireplaceOn, sunsetColor, fireplaceColor]);
 
   // Rotation control
   const rotationGroupRef = useRef<THREE.Group | null>(null);
@@ -111,9 +141,9 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // 2. Camera setup (True Isometric Perspective)
+    // 2. Camera setup: More Zoomed-In by Default (frustumSize: 3.3)
     const aspect = width / height;
-    const frustumSize = 4.4;
+    const frustumSize = 3.3; // Closer, zoomed-in view requested by user!
     const camera = new THREE.OrthographicCamera(
       (-frustumSize * aspect) / 2,
       (frustumSize * aspect) / 2,
@@ -123,8 +153,8 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       100
     );
 
-    camera.position.set(4.2, 4.0, 4.2);
-    camera.lookAt(0, 0.35, 0);
+    camera.position.set(3.8, 3.6, 3.8);
+    camera.lookAt(0, 0.45, -0.2);
 
     // 3. Renderer setup
     const renderer = new THREE.WebGLRenderer({
@@ -171,9 +201,11 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       color: isDarkMode ? 0x242831 : 0xf8fafc,
       roughness: 0.85,
     });
-    const woodDeskMat = new THREE.MeshStandardMaterial({
-      color: isDarkMode ? 0x6e4a2c : 0xb47946,
-      roughness: 0.65,
+    // Crisp Modern White Desk Material (Requested by user)
+    const whiteDeskMat = new THREE.MeshStandardMaterial({
+      color: isDarkMode ? 0xf1f5f9 : 0xffffff,
+      roughness: 0.35,
+      metalness: 0.1,
     });
     const woodBedMat = new THREE.MeshStandardMaterial({
       color: isDarkMode ? 0x7c4a27 : 0xa16207,
@@ -209,254 +241,353 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       roughness: 0.5,
     });
 
-    // 6. Geometry: Floor & Walls (Dorm Room Dimensions)
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 4.2), floorMat);
+    // -------------------------------------------------------------
+    // 6. NARROW DORM ROOM SHELL (Reduced width requested by user: 2.8m width)
+    // -------------------------------------------------------------
+    const roomWidth = 2.8;
+    const roomLength = 4.0;
+    const halfW = roomWidth / 2; // 1.4m
+
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 0.12, roomLength), floorMat);
     floor.position.set(0, -0.06, 0);
     floor.receiveShadow = true;
     masterGroup.add(floor);
 
     // Left Wall (Z-axis wall)
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 4.2), wallMat);
-    leftWall.position.set(-1.86, 1.14, 0);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, roomLength), wallMat);
+    leftWall.position.set(-halfW - 0.06, 1.14, 0);
     leftWall.receiveShadow = true;
     masterGroup.add(leftWall);
 
     // Back Wall (X-axis wall)
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.4, 0.12), wallMat);
-    backWall.position.set(0, 1.14, -2.16);
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 2.4, 0.12), wallMat);
+    backWall.position.set(0, 1.14, -roomLength / 2 - 0.06);
     backWall.receiveShadow = true;
     masterGroup.add(backWall);
 
     // -------------------------------------------------------------
-    // BACK WALL DETAILS: WINDOW, BALCONY DOOR, RADIATOR & DRYING RACK (1:1 with photo!)
+    // BACK WALL DETAILS: WINDOW, BALCONY DOOR, RADIATOR & DRYING RACK
     // -------------------------------------------------------------
-    // 1. Left Square Window with Green Tree View
-    const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.72, 0.04), whiteMat);
-    windowFrame.position.set(-1.15, 1.35, -2.09);
+    // 1. Left Square Window with Outdoor Tree View
+    const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.64, 0.04), whiteMat);
+    windowFrame.position.set(-0.85, 1.35, -2.0);
     masterGroup.add(windowFrame);
 
     const windowGlass = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.62, 0.62),
+      new THREE.PlaneGeometry(0.56, 0.56),
       new THREE.MeshBasicMaterial({ color: 0x86efac, transparent: true, opacity: 0.9 })
     );
-    windowGlass.position.set(-1.15, 1.35, -2.06);
+    windowGlass.position.set(-0.85, 1.35, -1.97);
     masterGroup.add(windowGlass);
 
-    // 2. Right Balcony Glass Door (Tall glass door leading to balcony)
-    const balconyDoorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.7, 0.04), whiteMat);
-    balconyDoorFrame.position.set(-0.25, 0.95, -2.09);
+    // 2. Right Balcony Glass Door
+    const balconyDoorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.58, 1.7, 0.04), whiteMat);
+    balconyDoorFrame.position.set(-0.15, 0.95, -2.0);
     masterGroup.add(balconyDoorFrame);
 
     const balconyDoorGlass = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.58, 1.6),
+      new THREE.PlaneGeometry(0.5, 1.6),
       new THREE.MeshBasicMaterial({ color: 0xbbf7d0, transparent: true, opacity: 0.85 })
     );
-    balconyDoorGlass.position.set(-0.25, 0.95, -2.06);
+    balconyDoorGlass.position.set(-0.15, 0.95, -1.97);
     masterGroup.add(balconyDoorGlass);
 
-    // 3. European Wall Radiator Heater under the window/wall
-    const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.48, 0.05), whiteMat);
-    radiator.position.set(0.48, 0.44, -2.07);
+    // 3. European Wall Radiator Heater
+    const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.44, 0.05), whiteMat);
+    radiator.position.set(0.55, 0.42, -1.98);
     masterGroup.add(radiator);
 
-    // 4. Black Clothes Drying Rack (In front of radiator/door)
-    const rackGroup = new THREE.Group();
-    rackGroup.position.set(0.35, 0.45, -1.75);
-    const rackFrame1 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.85, 0.42), metalMat);
-    rackGroup.add(rackFrame1);
-    const rackFrame2 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.85, 0.42), metalMat);
-    rackFrame2.position.x = 0.16;
-    rackGroup.add(rackFrame2);
-    // Hanging laundry on rack
-    const laundryMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.45, 0.38), darkBlanketMat);
-    laundryMesh.position.set(0.08, 0.05, 0);
-    rackGroup.add(laundryMesh);
-    masterGroup.add(rackGroup);
-
     // -------------------------------------------------------------
-    // LEFT SIDE: WOODEN DESK, DUAL MONITORS, LAPTOP, IPAD, GREY RUG & LIGHT-BLUE CHAIR
+    // LEFT SIDE: WHITE DESK, DUAL MONITORS, MOUSEPAD, KEYBOARD, MOUSE, LAPTOP, COMPACT FIREPLACE
     // -------------------------------------------------------------
-    // Large Soft Grey Textured Rug under desk & chair
-    const greyRug = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.01, 1.8), rugMat);
-    greyRug.position.set(-1.05, 0.005, -0.65);
+    // Large Soft Grey Textured Rug in aisle
+    const greyRug = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.01, 1.7), rugMat);
+    greyRug.position.set(-0.6, 0.005, -0.65);
     greyRug.receiveShadow = true;
     masterGroup.add(greyRug);
 
-    // Brown Wooden Study Desk
-    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.7), woodDeskMat);
-    deskTop.position.set(-1.05, 0.74, -1.35);
+    // Clean Modern White Study Desk (Requested by user)
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.65), whiteDeskMat);
+    deskTop.position.set(-0.75, 0.74, -1.3);
     masterGroup.add(deskTop);
 
-    // Desk Drawer Pedestal on the Right
-    const drawerBox = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.42, 0.62), woodDeskMat);
-    drawerBox.position.set(-0.55, 0.48, -1.35);
+    // White Desk Drawer Pedestal
+    const drawerBox = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.42, 0.58), whiteDeskMat);
+    drawerBox.position.set(-0.3, 0.48, -1.3);
     masterGroup.add(drawerBox);
 
-    // Desk Legs
-    const deskLegGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.72);
-    [[-1.62, 0.36, -1.62], [-1.62, 0.36, -1.08], [-0.48, 0.36, -1.08]].forEach(([x, y, z]) => {
-      const leg = new THREE.Mesh(deskLegGeo, woodDeskMat);
+    // Desk Frame Legs (White)
+    const deskLegGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.72);
+    [[-1.3, 0.36, -1.55], [-1.3, 0.36, -1.05], [-0.22, 0.36, -1.05]].forEach(([x, y, z]) => {
+      const leg = new THREE.Mesh(deskLegGeo, whiteDeskMat);
       leg.position.set(x, y, z);
       masterGroup.add(leg);
     });
 
-    // DUAL MONITOR SETUP (1:1 with photo!)
-    // Monitor 1: Wide Horizontal Screen on Left
-    const mon1Stand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, 0.22), metalMat);
-    mon1Stand.position.set(-1.42, 0.86, -1.45);
+    // DUAL MONITOR SETUP
+    // Monitor 1: Wide Horizontal Screen
+    const mon1Stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.035, 0.2), metalMat);
+    mon1Stand.position.set(-1.08, 0.85, -1.4);
     masterGroup.add(mon1Stand);
 
     const mon1Screen = new THREE.Mesh(
-      new THREE.BoxGeometry(0.48, 0.28, 0.015),
+      new THREE.BoxGeometry(0.44, 0.26, 0.015),
       new THREE.MeshBasicMaterial({ color: isDarkMode ? 0x0284c7 : 0x0f172a })
     );
-    mon1Screen.position.set(-1.42, 1.04, -1.45);
+    mon1Screen.position.set(-1.08, 1.02, -1.4);
     masterGroup.add(mon1Screen);
 
-    // Monitor 2: Vertical Portrait Screen Next to it!
-    const mon2Stand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, 0.22), metalMat);
-    mon2Stand.position.set(-1.05, 0.86, -1.45);
+    // Monitor 2: Vertical Portrait Screen Next to it
+    const mon2Stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.035, 0.2), metalMat);
+    mon2Stand.position.set(-0.75, 0.85, -1.4);
     masterGroup.add(mon2Stand);
 
     const mon2Screen = new THREE.Mesh(
-      new THREE.BoxGeometry(0.24, 0.42, 0.015),
+      new THREE.BoxGeometry(0.22, 0.38, 0.015),
       new THREE.MeshBasicMaterial({ color: isDarkMode ? 0x38bdf8 : 0x1e293b })
     );
-    mon2Screen.position.set(-1.05, 1.11, -1.45);
+    mon2Screen.position.set(-0.75, 1.08, -1.4);
     masterGroup.add(mon2Screen);
 
-    // Laptop Open on the Right Side of the Desk with Colorful Screen (Matching photo!)
-    const laptopBase = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.18), metalMat);
-    laptopBase.position.set(-0.65, 0.77, -1.25);
+    // MOUSEPAD, MECHANICAL KEYBOARD & GAMING MOUSE (Requested by user)
+    // 1. Extended Dark Desk Mousepad
+    const mousepad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.004, 0.26),
+      new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.9 })
+    );
+    mousepad.position.set(-0.85, 0.763, -1.18);
+    masterGroup.add(mousepad);
+
+    // 2. Mechanical Gaming Keyboard (Clean White)
+    const keyboard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.012, 0.11),
+      new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.1 })
+    );
+    keyboard.position.set(-0.92, 0.771, -1.18);
+    masterGroup.add(keyboard);
+
+    // 3. Ergonomic Gaming Mouse
+    const mouse = new THREE.Mesh(
+      new THREE.BoxGeometry(0.055, 0.014, 0.085),
+      new THREE.MeshStandardMaterial({ color: 0x090a0d, roughness: 0.4 })
+    );
+    mouse.position.set(-0.66, 0.772, -1.18);
+    masterGroup.add(mouse);
+
+    // Laptop Open on the Right Side of the Desk (Screen Turned Off)
+    const laptopBase = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.01, 0.16), metalMat);
+    laptopBase.position.set(-0.42, 0.766, -1.2);
     masterGroup.add(laptopBase);
 
     const laptopScreen = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26, 0.16, 0.01),
-      new THREE.MeshBasicMaterial({ color: 0xa855f7 }) // Glowing magenta/purple wallpaper
+      new THREE.BoxGeometry(0.24, 0.15, 0.01),
+      new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 0.2, metalness: 0.6 }) // Sleek dark glass off display
     );
-    laptopScreen.position.set(-0.65, 0.86, -1.33);
-    laptopScreen.rotation.x = -0.22;
+    laptopScreen.position.set(-0.42, 0.85, -1.28);
+    laptopScreen.rotation.x = -0.2;
     masterGroup.add(laptopScreen);
 
-    // iPad / Tablet on Desk
-    const ipadMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.006, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
-    );
-    ipadMesh.position.set(-1.05, 0.77, -1.15);
-    ipadMesh.rotation.y = 0.1;
-    masterGroup.add(ipadMesh);
+    // -------------------------------------------------------------
+    // APPLIANCE 4: COMPACT DESKTOP FIREPLACE (Small & on desk, no big light beam!)
+    // -------------------------------------------------------------
+    const fpDeskGroup = new THREE.Group();
+    // Sitting neatly on the right corner of the study desk (x = -0.22, y = 0.76, z = -1.45)
+    fpDeskGroup.position.set(-0.22, 0.81, -1.42);
 
-    // AUTHENTIC LIGHT-BLUE ERGONOMIC OFFICE CHAIR (1:1 with user photo!)
+    // Compact Obsidian Casing (Small desktop aroma diffuser unit!)
+    const fpBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.09, 0.09),
+      new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.35, metalness: 0.25 })
+    );
+    fpDeskGroup.add(fpBody);
+
+    // Front Window with Glowing Burning Logs
+    const fpWin = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.06, 0.005),
+      new THREE.MeshBasicMaterial({ color: isFireplaceOn ? new THREE.Color(fireplaceColor) : 0x1a1a1f })
+    );
+    fpWin.position.set(0, -0.005, 0.046);
+    fpDeskGroup.add(fpWin);
+
+    // Top Mist Leaping Flame Tongue (Delicate rising flame wisps)
+    const topFlame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.045, 0.12, 12),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(fireplaceColor), transparent: true, opacity: isFireplaceOn ? 0.9 : 0 })
+    );
+    topFlame.position.set(0, 0.1, 0);
+    topFlame.rotation.x = Math.PI;
+    fpDeskGroup.add(topFlame);
+    fireplaceFlameRef.current = topFlame;
+
+    const fpPointLight = new THREE.PointLight(new THREE.Color(fireplaceColor), isFireplaceOn ? 1.8 : 0, 1.8);
+    fpPointLight.position.set(0, 0.08, 0.08);
+    fpDeskGroup.add(fpPointLight);
+
+    masterGroup.add(fpDeskGroup);
+
+    // AUTHENTIC LIGHT-BLUE ERGONOMIC OFFICE CHAIR
     const officeChairGroup = new THREE.Group();
-    officeChairGroup.position.set(-1.05, 0, -0.65);
+    officeChairGroup.position.set(-0.85, 0, -0.65);
     officeChairGroup.rotation.y = 0.15;
 
     // Chrome 5-star wheeled base
-    const chairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.03, 5), chromeMat);
+    const chairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 5), chromeMat);
     chairBase.position.y = 0.05;
     officeChairGroup.add(chairBase);
 
-    const chairPiston = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.32), chromeMat);
+    const chairPiston = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.32), chromeMat);
     chairPiston.position.y = 0.22;
     officeChairGroup.add(chairPiston);
 
     // Light-Blue Fabric Seat Cushion
-    const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), blueChairMat);
+    const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.4), blueChairMat);
     chairSeat.position.y = 0.42;
     officeChairGroup.add(chairSeat);
 
-    // Tall Curved Light-Blue Fabric Backrest with Headrest
-    const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.58, 0.06), blueChairMat);
-    chairBack.position.set(0, 0.74, 0.18);
+    // Tall Curved Light-Blue Fabric Backrest
+    const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.54, 0.06), blueChairMat);
+    chairBack.position.set(0, 0.72, 0.17);
     chairBack.rotation.x = -0.12;
     officeChairGroup.add(chairBack);
 
     // Black Ergonomic Armrests
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.18), metalMat);
-    armL.position.set(-0.23, 0.56, 0.04);
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.16, 0.16), metalMat);
+    armL.position.set(-0.22, 0.54, 0.04);
     officeChairGroup.add(armL);
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.18), metalMat);
-    armR.position.set(0.23, 0.56, 0.04);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.16, 0.16), metalMat);
+    armR.position.set(0.22, 0.54, 0.04);
     officeChairGroup.add(armR);
 
     masterGroup.add(officeChairGroup);
 
     // -------------------------------------------------------------
-    // RIGHT SIDE: WOODEN SINGLE BED & 3 MOTORSPORT ART POSTERS (1:1 with photo!)
+    // RIGHT SIDE: WOODEN SINGLE BED, ART POSTERS & FAN NEXT TO BED
     // -------------------------------------------------------------
-    // Wooden Single Bed Frame
-    const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.32, 2.1), woodBedMat);
-    bedFrame.position.set(1.15, 0.16, -0.25);
+    // Wooden Single Bed Frame (Snug on right wall: x = 0.85)
+    const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.32, 2.05), woodBedMat);
+    bedFrame.position.set(0.85, 0.16, -0.25);
     masterGroup.add(bedFrame);
 
-    // High Wooden Headboard along the back
-    const headboard = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.48, 0.06), woodBedMat);
-    headboard.position.set(1.15, 0.44, -1.28);
+    // High Wooden Headboard along back
+    const headboard = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.48, 0.06), woodBedMat);
+    headboard.position.set(0.85, 0.44, -1.25);
     masterGroup.add(headboard);
 
     // Mattress
-    const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.16, 1.95), whiteMat);
-    mattress.position.set(1.15, 0.38, -0.25);
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.16, 1.9), whiteMat);
+    mattress.position.set(0.85, 0.38, -0.25);
     masterGroup.add(mattress);
 
-    // Grey Pillow at the head
+    // Grey Pillow
     const pillow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.65, 0.08, 0.38),
+      new THREE.BoxGeometry(0.6, 0.08, 0.36),
       new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 })
     );
-    pillow.position.set(1.15, 0.48, -0.98);
+    pillow.position.set(0.85, 0.48, -0.95);
     masterGroup.add(pillow);
 
-    // Dark Navy / Black Quilt Blanket draped over the bed (Matching user photo!)
-    const darkBlanket = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.07, 1.45), darkBlanketMat);
-    darkBlanket.position.set(1.15, 0.48, 0.05);
+    // Dark Navy / Black Quilt Blanket draped on the bed
+    const darkBlanket = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.07, 1.4), darkBlanketMat);
+    darkBlanket.position.set(0.85, 0.48, 0.05);
     masterGroup.add(darkBlanket);
 
-    // 3 FRAMED MOTORSPORT ART POSTERS ON THE RIGHT WALL (Exact match with user photo!)
-    // Poster 1 (Left): Blue/White Sports Car
-    const poster1 = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.24, 0.36),
-      new THREE.MeshBasicMaterial({ color: 0x0284c7 })
-    );
-    poster1.position.set(1.78, 1.45, -0.6);
-    poster1.rotation.y = -Math.PI / 2;
-    masterGroup.add(poster1);
+    // -------------------------------------------------------------
+    // 3 FRAMED ART POSTERS ON THE LEFT WALL DEAD CENTER (x = -1.38, z = 0.0 midpoint)
+    // -------------------------------------------------------------
+    const oakFrameMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.6 }); // Light natural birch/oak wood frame
+    const createArtFrame = (x: number, y: number, z: number, w: number, h: number, artColor: number) => {
+      const frameGroup = new THREE.Group();
+      frameGroup.position.set(x, y, z);
+      frameGroup.rotation.y = Math.PI / 2; // Flat against left wall facing right into room
 
-    // Poster 2 (Center): Marlboro Motorsport Race Car (Largest)
-    const poster2 = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.32, 0.46),
-      new THREE.MeshBasicMaterial({ color: 0xef4444 }) // Iconic Marlboro red
-    );
-    poster2.position.set(1.78, 1.48, -0.22);
-    poster2.rotation.y = -Math.PI / 2;
-    masterGroup.add(poster2);
+      // Natural Light Birch / Oak Wood Frame
+      const frameBorder = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.04, h + 0.04, 0.015),
+        oakFrameMat
+      );
+      frameGroup.add(frameBorder);
 
-    // Poster 3 (Right): Yellow Porsche Race Car
-    const poster3 = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.26, 0.38),
-      new THREE.MeshBasicMaterial({ color: 0xeab308 }) // Vibrant Porsche yellow
-    );
-    poster3.position.set(1.78, 1.45, 0.16);
-    poster3.rotation.y = -Math.PI / 2;
-    masterGroup.add(poster3);
+      // Inner White Passe-Partout Matte
+      const passePartout = new THREE.Mesh(
+        new THREE.PlaneGeometry(w + 0.02, h + 0.02),
+        new THREE.MeshBasicMaterial({ color: 0xf8fafc })
+      );
+      passePartout.position.z = 0.009;
+      frameGroup.add(passePartout);
+
+      // Artwork Print (Blue / Dark Marlboro F1 / Yellow GT3)
+      const artPrint = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: artColor })
+      );
+      artPrint.position.z = 0.01;
+      frameGroup.add(artPrint);
+
+      return frameGroup;
+    };
+
+    // 3 FRAMES DEAD CENTER ON THE LEFT WALL (Midpoint z = 0.0, y = 1.48 - 1.52)
+    // Frame 1: Blue Porsche Racing Poster (z = -0.38)
+    masterGroup.add(createArtFrame(-1.38, 1.48, -0.38, 0.20, 0.32, 0x0284c7));
+
+    // Frame 2: Dark Marlboro McLaren F1 Poster (Dead Center, z = 0.0)
+    masterGroup.add(createArtFrame(-1.38, 1.52, 0.0, 0.24, 0.36, 0x1e293b));
+
+    // Frame 3: Yellow Porsche GT3 Poster (z = +0.38)
+    masterGroup.add(createArtFrame(-1.38, 1.48, 0.38, 0.20, 0.32, 0xeab308));
 
     // -------------------------------------------------------------
-    // APPLIANCES INTEGRATION
+    // APPLIANCE 3: SMART FLOOR FAN NEXT TO THE BED (Requested by user!)
     // -------------------------------------------------------------
-    // APPLIANCE 1: Sunset Projector Lamp (on desk casting multi-shade chromatic halo)
-    const sunsetStand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.05, 0.28), metalMat);
-    sunsetStand.position.set(-1.6, 0.88, -1.55);
+    const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03), metalMat);
+    fanBase.position.set(0.85, 0.015, 0.98); // Standing at the foot/side of the bed!
+    masterGroup.add(fanBase);
+
+    const fanPole = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.88), metalMat);
+    fanPole.position.set(0.85, 0.46, 0.98);
+    masterGroup.add(fanPole);
+
+    const fanRingMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      roughness: 0.3,
+      emissive: isFanOn ? 0x0284c7 : 0x000000,
+      emissiveIntensity: isFanOn ? 0.8 : 0.0,
+    });
+    const fanRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.012, 8, 24), fanRingMat);
+    fanRing.position.set(0.85, 0.9, 0.98);
+    masterGroup.add(fanRing);
+    fanRingRef.current = fanRing;
+
+    const fanBladesGroup = new THREE.Group();
+    fanBladesGroup.position.set(0.85, 0.9, 0.98);
+    masterGroup.add(fanBladesGroup);
+    fanBladesRef.current = fanBladesGroup;
+
+    const bladeGeo = new THREE.BoxGeometry(0.03, 0.14, 0.008);
+    const bladeMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+    for (let i = 0; i < 3; i++) {
+      const blade = new THREE.Mesh(bladeGeo, bladeMat);
+      blade.rotation.z = (i * (Math.PI * 2)) / 3;
+      blade.position.y = 0.06 * Math.cos(blade.rotation.z);
+      blade.position.x = -0.06 * Math.sin(blade.rotation.z);
+      fanBladesGroup.add(blade);
+    }
+
+    // -------------------------------------------------------------
+    // APPLIANCE 1: SUNSET LAMP PROJECTING ON LEFT WALL (Requested by user!)
+    // -------------------------------------------------------------
+    const sunsetStand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.04, 0.24), metalMat);
+    sunsetStand.position.set(-1.25, 0.88, -1.2);
     masterGroup.add(sunsetStand);
 
     const sunsetHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055, 16, 16),
+      new THREE.SphereGeometry(0.05, 16, 16),
       new THREE.MeshStandardMaterial({ color: 0xff8c00, roughness: 0.2, emissive: 0xff6600, emissiveIntensity: 0.6 })
     );
-    sunsetHead.position.set(-1.6, 1.04, -1.55);
+    sunsetHead.position.set(-1.25, 1.02, -1.2);
     masterGroup.add(sunsetHead);
 
-    // Multi-shade Chromatic Sunset Halo Projection on back wall
+    // Multi-shade Chromatic Sunset Halo Projection ON THE LEFT WALL!
     const sunsetTexture = createChromaticSunsetTexture(sunsetColor);
     const haloMat = new THREE.MeshBasicMaterial({
       map: sunsetTexture,
@@ -466,19 +597,27 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       side: THREE.DoubleSide,
       depthWrite: false,
     });
+    // Projected directly on left wall (x = -1.39)
     const sunsetHalo = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), haloMat);
-    sunsetHalo.position.set(-1.4, 1.55, -2.08);
+    sunsetHalo.position.set(-1.38, 1.4, -1.0);
+    sunsetHalo.rotation.y = Math.PI / 2; // Flat against the left wall!
     masterGroup.add(sunsetHalo);
     sunsetHaloRef.current = sunsetHalo;
 
-    const sunsetLight = new THREE.PointLight(new THREE.Color(sunsetColor), isSunsetOn ? 2.8 : 0, 3.8);
-    sunsetLight.position.set(-1.55, 1.15, -1.5);
+    const sunsetLight = new THREE.PointLight(new THREE.Color(sunsetColor), isSunsetOn ? 2.8 : 0, 3.5);
+    sunsetLight.position.set(-1.2, 1.15, -1.0);
     masterGroup.add(sunsetLight);
     sunsetLightRef.current = sunsetLight;
 
+    // -------------------------------------------------------------
     // APPLIANCE 2: Three O Bedside Lamp (on nightstand)
-    const bedsideBase = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03), metalMat);
-    bedsideBase.position.set(0.48, 0.72, -1.45);
+    // -------------------------------------------------------------
+    const bedsideTable = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.42, 0.32), woodBedMat);
+    bedsideTable.position.set(0.28, 0.21, -1.4);
+    masterGroup.add(bedsideTable);
+
+    const bedsideBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.025), metalMat);
+    bedsideBase.position.set(0.28, 0.43, -1.4);
     masterGroup.add(bedsideBase);
 
     const bedsideDomeMat = new THREE.MeshStandardMaterial({
@@ -487,108 +626,15 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
       emissiveIntensity: isBedsideOn ? 0.9 : 0.0,
       roughness: 0.2,
     });
-    const bedsideDome = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 16), bedsideDomeMat);
-    bedsideDome.position.set(0.48, 0.81, -1.45);
+    const bedsideDome = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.12, 16), bedsideDomeMat);
+    bedsideDome.position.set(0.28, 0.50, -1.4);
     masterGroup.add(bedsideDome);
     bedsideDomeRef.current = bedsideDome;
 
-    const bedsideLight = new THREE.PointLight(0xf8e5a5, isBedsideOn ? 2.0 : 0, 2.5);
-    bedsideLight.position.set(0.48, 0.88, -1.45);
+    const bedsideLight = new THREE.PointLight(0xf8e5a5, isBedsideOn ? 2.0 : 0, 2.2);
+    bedsideLight.position.set(0.28, 0.56, -1.4);
     masterGroup.add(bedsideLight);
     bedsideLightRef.current = bedsideLight;
-
-    // APPLIANCE 3: Smart Floor Fan (Standing near bed/window)
-    const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.03), metalMat);
-    fanBase.position.set(-1.55, 0.015, 0.45);
-    masterGroup.add(fanBase);
-
-    const fanPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.92), metalMat);
-    fanPole.position.set(-1.55, 0.48, 0.45);
-    masterGroup.add(fanPole);
-
-    const fanRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.2, 0.014, 8, 24),
-      new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 })
-    );
-    fanRing.position.set(-1.55, 0.95, 0.45);
-    masterGroup.add(fanRing);
-
-    const fanBladesGroup = new THREE.Group();
-    fanBladesGroup.position.set(-1.55, 0.95, 0.45);
-    masterGroup.add(fanBladesGroup);
-    fanBladesRef.current = fanBladesGroup;
-
-    const bladeGeo = new THREE.BoxGeometry(0.035, 0.16, 0.008);
-    const bladeMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
-    for (let i = 0; i < 3; i++) {
-      const blade = new THREE.Mesh(bladeGeo, bladeMat);
-      blade.rotation.z = (i * (Math.PI * 2)) / 3;
-      blade.position.y = 0.065 * Math.cos(blade.rotation.z);
-      blade.position.x = -0.065 * Math.sin(blade.rotation.z);
-      fanBladesGroup.add(blade);
-    }
-
-    // APPLIANCE 4: Realistic 3D Fireplace Hearth with Burning Logs & Flames
-    const fireplaceGroup = new THREE.Group();
-    fireplaceGroup.position.set(0.48, 0.22, -1.45);
-
-    const fpChassis = new THREE.Mesh(
-      new THREE.BoxGeometry(0.58, 0.42, 0.24),
-      new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.35, metalness: 0.25 })
-    );
-    fireplaceGroup.add(fpChassis);
-
-    // Front Panoramic Tinted Glass Pane
-    const fpGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(0.48, 0.28, 0.008),
-      new THREE.MeshPhysicalMaterial({ color: 0x080a0e, roughness: 0.05, transparent: true, opacity: 0.22, transmission: 0.88 })
-    );
-    fpGlass.position.set(0, -0.02, 0.122);
-    fireplaceGroup.add(fpGlass);
-
-    // Glowing Ember Bed
-    const emberBed = new THREE.Mesh(
-      new THREE.BoxGeometry(0.44, 0.02, 0.14),
-      new THREE.MeshBasicMaterial({ color: isFireplaceOn ? new THREE.Color(fireplaceColor) : 0x16171a })
-    );
-    emberBed.position.set(0, -0.13, 0.05);
-    fireplaceGroup.add(emberBed);
-
-    // 3D Charred Oak Firewood Logs
-    const fpLog1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 12), new THREE.MeshStandardMaterial({ color: 0x2c2f37, roughness: 0.85 }));
-    fpLog1.rotation.z = Math.PI / 2;
-    fpLog1.position.set(0, -0.09, 0.06);
-    fireplaceGroup.add(fpLog1);
-
-    const fpLog2 = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.22, 12), new THREE.MeshStandardMaterial({ color: 0x2c2f37, roughness: 0.85 }));
-    fpLog2.rotation.z = Math.PI / 3.2;
-    fpLog2.position.set(-0.08, -0.06, 0.07);
-    fireplaceGroup.add(fpLog2);
-
-    // Internal Burning Flame Tongue
-    const insideFlame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.09, 0.14, 12),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(fireplaceColor), transparent: true, opacity: isFireplaceOn ? 0.9 : 0 })
-    );
-    insideFlame.position.set(0, -0.04, 0.06);
-    insideFlame.rotation.x = Math.PI;
-    fireplaceGroup.add(insideFlame);
-
-    // Top Mist Leaping Flame
-    const topFlame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.12, 0.26, 16),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(fireplaceColor), transparent: true, opacity: isFireplaceOn ? 0.88 : 0 })
-    );
-    topFlame.position.set(0, 0.34, 0.01);
-    topFlame.rotation.x = Math.PI;
-    fireplaceGroup.add(topFlame);
-    fireplaceFlameRef.current = topFlame;
-
-    const fpPointLight = new THREE.PointLight(new THREE.Color(fireplaceColor), isFireplaceOn ? 2.8 : 0, 2.8);
-    fpPointLight.position.set(0, 0.1, 0.18);
-    fireplaceGroup.add(fpPointLight);
-
-    masterGroup.add(fireplaceGroup);
 
     // 7. Interactive Pointer Drag & Rotation
     const handlePointerDown = (e: PointerEvent) => {
@@ -626,23 +672,78 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
 
       if (!isVisible) return;
 
-      // Damped rotation interpolation
+      // 1. Damped rotation interpolation for 3D drag
       currentRotationY.current += (targetRotationY.current - currentRotationY.current) * 0.1;
       if (rotationGroupRef.current) {
         rotationGroupRef.current.rotation.y = currentRotationY.current;
       }
 
-      // Rotate fan blades if fan is ON
-      if (fanBladesRef.current && isFanOn) {
-        const speedMultiplier = fanSpeed === 1 ? 0.15 : fanSpeed === 2 ? 0.3 : 0.55;
-        fanBladesRef.current.rotation.z += speedMultiplier;
+      // 2. SMART FAN SMOOTH ACCELERATION & COASTING DECELERATION (Inertia physics!)
+      const targetFanVelocity = isFanOnRef.current
+        ? fanSpeedRef.current === 1
+          ? 0.12
+          : fanSpeedRef.current === 2
+          ? 0.28
+          : 0.52
+        : 0;
+      // Gentle spin-up when turned on (0.05 factor), natural aerodynamic coast-down when turned off (0.025 factor)
+      const fanLerpRate = isFanOnRef.current ? 0.05 : 0.025;
+      currentFanVelocity.current += (targetFanVelocity - currentFanVelocity.current) * fanLerpRate;
+
+      if (fanBladesRef.current && Math.abs(currentFanVelocity.current) > 0.0002) {
+        fanBladesRef.current.rotation.z += currentFanVelocity.current;
       }
 
-      // Subtle pulse for flame humidifier
-      if (fireplaceFlameRef.current && isFireplaceOn) {
-        flamePulse += 0.05;
-        const scale = 1.0 + Math.sin(flamePulse) * 0.12;
-        fireplaceFlameRef.current.scale.set(scale, scale, scale);
+      // Fan ring smooth glow fade
+      const targetFanGlow = isFanOnRef.current ? 0.8 : 0;
+      currentFanGlow.current += (targetFanGlow - currentFanGlow.current) * 0.08;
+      if (fanRingRef.current) {
+        const mat = fanRingRef.current.material as THREE.MeshStandardMaterial;
+        mat.emissiveIntensity = currentFanGlow.current;
+      }
+
+      // 3. SUNSET LAMP SMOOTH LIGHT & HALO FADE
+      const targetSunsetLight = isSunsetOnRef.current ? 2.8 : 0;
+      currentSunsetIntensity.current += (targetSunsetLight - currentSunsetIntensity.current) * 0.08;
+      if (sunsetLightRef.current) {
+        sunsetLightRef.current.intensity = currentSunsetIntensity.current;
+        sunsetLightRef.current.color.set(sunsetColorRef.current);
+      }
+
+      const targetSunsetHalo = isSunsetOnRef.current ? 0.95 : 0;
+      currentSunsetHaloOpacity.current += (targetSunsetHalo - currentSunsetHaloOpacity.current) * 0.08;
+      if (sunsetHaloRef.current) {
+        const mat = sunsetHaloRef.current.material as THREE.MeshBasicMaterial;
+        mat.opacity = currentSunsetHaloOpacity.current;
+      }
+
+      // 4. BEDSIDE LAMP SMOOTH DIMMING & EMISSIVE WARMTH
+      const targetBedside = isBedsideOnRef.current ? 2.0 : 0;
+      currentBedsideIntensity.current += (targetBedside - currentBedsideIntensity.current) * 0.08;
+      if (bedsideLightRef.current) {
+        bedsideLightRef.current.intensity = currentBedsideIntensity.current;
+      }
+
+      const targetBedsideEm = isBedsideOnRef.current ? 0.9 : 0;
+      currentBedsideEmissive.current += (targetBedsideEm - currentBedsideEmissive.current) * 0.08;
+      if (bedsideDomeRef.current) {
+        const mat = bedsideDomeRef.current.material as THREE.MeshStandardMaterial;
+        mat.emissiveIntensity = currentBedsideEmissive.current;
+      }
+
+      // 5. FIREPLACE FLAME SMOOTH IGNITION & EXTINGUISH
+      const targetFlame = isFireplaceOnRef.current ? 0.88 : 0;
+      currentFlameOpacity.current += (targetFlame - currentFlameOpacity.current) * 0.08;
+      if (fireplaceFlameRef.current) {
+        const mat = fireplaceFlameRef.current.material as THREE.MeshBasicMaterial;
+        mat.opacity = currentFlameOpacity.current;
+        mat.color.set(fireplaceColorRef.current);
+
+        if (currentFlameOpacity.current > 0.01) {
+          flamePulse += 0.05;
+          const scale = 1.0 + Math.sin(flamePulse) * 0.12;
+          fireplaceFlameRef.current.scale.set(scale, scale, scale);
+        }
       }
 
       renderer.render(scene, camera);
@@ -664,35 +765,17 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     };
   }, [isDarkMode]);
 
-  // Update dynamic lights & colors when props change without recreating scene
+  // Update dynamic texture when sunset color changes
   useEffect(() => {
-    if (sunsetLightRef.current) {
-      sunsetLightRef.current.intensity = isSunsetOn ? 2.8 : 0;
-      sunsetLightRef.current.color.set(sunsetColor);
-    }
     if (sunsetHaloRef.current) {
       const mat = sunsetHaloRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = isSunsetOn ? 0.95 : 0;
       if (mat.map) {
         mat.map.dispose();
       }
       mat.map = createChromaticSunsetTexture(sunsetColor);
       mat.needsUpdate = true;
     }
-    if (bedsideLightRef.current) {
-      bedsideLightRef.current.intensity = isBedsideOn ? 2.0 : 0;
-    }
-    if (bedsideDomeRef.current) {
-      const mat = bedsideDomeRef.current.material as THREE.MeshStandardMaterial;
-      mat.emissive.set(isBedsideOn ? 0xf8e5a5 : 0x000000);
-      mat.emissiveIntensity = isBedsideOn ? 0.9 : 0;
-    }
-    if (fireplaceFlameRef.current) {
-      const mat = fireplaceFlameRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = isFireplaceOn ? 0.88 : 0;
-      mat.color.set(fireplaceColor);
-    }
-  }, [isSunsetOn, isBedsideOn, isFireplaceOn, sunsetColor, fireplaceColor]);
+  }, [sunsetColor]);
 
   return (
     <div

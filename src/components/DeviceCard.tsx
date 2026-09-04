@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Lightbulb, Fan, Flame, ArrowUpRight } from 'lucide-react';
+import { Power, Lightbulb, Fan, Flame, Sun, ArrowUpRight } from 'lucide-react';
 import { hapticFeedback } from '../services/haptics';
 
 interface DeviceCardProps {
@@ -31,7 +31,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
       case 'fan':
         return <Fan size={18} className={isOn ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} />;
       case 'sunset':
-        return <Flame size={18} />;
+        return <Sun size={18} />;
       case 'fireplace':
         return <Flame size={18} className={isOn ? 'text-amber-600 animate-pulse' : ''} />;
       default:
