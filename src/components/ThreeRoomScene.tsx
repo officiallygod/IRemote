@@ -19,6 +19,48 @@ interface ThreeRoomSceneProps {
   onOpenDevice?: (deviceId: string) => void;
 }
 
+// Generates authentic multi-shade chromatic sunset projection texture (mix of radiant yellow, amber, crimson, violet)
+function createChromaticSunsetTexture(primaryHex: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+
+  const color = new THREE.Color(primaryHex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+
+  // Warm sunset hue (amber/orange/red):
+  if (hsl.h < 0.15 || hsl.h > 0.9) {
+    grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');     // White-hot radiant center
+    grad.addColorStop(0.2, 'rgba(254, 240, 138, 0.95)');    // Solar Gold
+    grad.addColorStop(0.48, 'rgba(249, 115, 22, 0.88)');    // Tangerine Amber
+    grad.addColorStop(0.75, 'rgba(225, 29, 72, 0.7)');      // Sunset Ruby Rose
+    grad.addColorStop(0.92, 'rgba(147, 51, 234, 0.4)');     // Twilight Dusk Violet
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');           // Atmospheric falloff
+  } else {
+    // Dynamic multi-shade chromatic rings for all other colors
+    const core = new THREE.Color().setHSL((hsl.h + 0.08) % 1.0, Math.min(1, hsl.s * 1.2), 0.9);
+    const mid = color;
+    const rim = new THREE.Color().setHSL((hsl.h - 0.12 + 1.0) % 1.0, hsl.s, 0.5);
+
+    grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.22, `rgba(${Math.round(core.r * 255)}, ${Math.round(core.g * 255)}, ${Math.round(core.b * 255)}, 0.95)`);
+    grad.addColorStop(0.55, `rgba(${Math.round(mid.r * 255)}, ${Math.round(mid.g * 255)}, ${Math.round(mid.b * 255)}, 0.85)`);
+    grad.addColorStop(0.85, `rgba(${Math.round(rim.r * 255)}, ${Math.round(rim.g * 255)}, ${Math.round(rim.b * 255)}, 0.45)`);
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+  }
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
   isDarkMode = true,
   isSunsetOn,
@@ -346,20 +388,23 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     sunsetHead.position.set(-1.45, 1.05, -0.65);
     masterGroup.add(sunsetHead);
 
-    // Sunset Wall Halo Projection (Smooth glowing disc on back wall)
-    const haloGeo = new THREE.CircleGeometry(0.65, 32);
+    // Sunset Wall Halo Projection (Multi-shade chromatic sunset gradient on back wall)
+    const sunsetTexture = createChromaticSunsetTexture(sunsetColor);
+    const haloGeo = new THREE.PlaneGeometry(1.45, 1.45);
     const haloMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(sunsetColor),
+      map: sunsetTexture,
       transparent: true,
-      opacity: isSunsetOn ? 0.75 : 0.0,
+      opacity: isSunsetOn ? 0.95 : 0.0,
+      blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
+      depthWrite: false,
     });
     const sunsetHalo = new THREE.Mesh(haloGeo, haloMat);
-    sunsetHalo.position.set(-1.15, 1.45, -1.79);
+    sunsetHalo.position.set(-1.15, 1.45, -1.78);
     masterGroup.add(sunsetHalo);
     sunsetHaloRef.current = sunsetHalo;
 
-    const sunsetLight = new THREE.PointLight(new THREE.Color(sunsetColor), isSunsetOn ? 2.5 : 0, 3.5);
+    const sunsetLight = new THREE.PointLight(new THREE.Color(sunsetColor), isSunsetOn ? 2.8 : 0, 3.8);
     sunsetLight.position.set(-1.4, 1.1, -0.7);
     masterGroup.add(sunsetLight);
     sunsetLightRef.current = sunsetLight;
@@ -641,13 +686,17 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
   // Update dynamic lights & colors when props change without recreating scene
   useEffect(() => {
     if (sunsetLightRef.current) {
-      sunsetLightRef.current.intensity = isSunsetOn ? 2.5 : 0;
+      sunsetLightRef.current.intensity = isSunsetOn ? 2.8 : 0;
       sunsetLightRef.current.color.set(sunsetColor);
     }
     if (sunsetHaloRef.current) {
       const mat = sunsetHaloRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = isSunsetOn ? 0.75 : 0;
-      mat.color.set(sunsetColor);
+      mat.opacity = isSunsetOn ? 0.95 : 0;
+      if (mat.map) {
+        mat.map.dispose();
+      }
+      mat.map = createChromaticSunsetTexture(sunsetColor);
+      mat.needsUpdate = true;
     }
     if (bedsideLightRef.current) {
       bedsideLightRef.current.intensity = isBedsideOn ? 2.0 : 0;
@@ -659,7 +708,7 @@ export const ThreeRoomScene: React.FC<ThreeRoomSceneProps> = ({
     }
     if (fireplaceFlameRef.current) {
       const mat = fireplaceFlameRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = isFireplaceOn ? 0.85 : 0;
+      mat.opacity = isFireplaceOn ? 0.88 : 0;
       mat.color.set(fireplaceColor);
     }
   }, [isSunsetOn, isBedsideOn, isFireplaceOn, sunsetColor, fireplaceColor]);

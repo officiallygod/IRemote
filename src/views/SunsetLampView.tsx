@@ -20,14 +20,6 @@ interface SunsetLampViewProps {
   isDarkMode?: boolean;
 }
 
-// 4 Primary quick keys directly matching user's 24-key remote Row 2
-const PRIMARY_REMOTE_COLORS = [
-  { id: 'red', name: 'Red', color: '#EF4444', hex: '00F720DF' },
-  { id: 'green', name: 'Green', color: '#10B981', hex: '00F7A05F' },
-  { id: 'blue', name: 'Blue', color: '#2563EB', hex: '00F7609F' },
-  { id: 'white', name: 'White', color: '#F8FAFC', hex: '00F7E01F' },
-];
-
 export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
   onBack,
   state,
@@ -53,12 +45,6 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
     } else {
       irBlaster.sendNec(RGB_LED_CONTROLS.brightDown.hex, 'Brightness -', 'Sunset Lamp');
     }
-  };
-
-  const handleSelectPrimary = (item: typeof PRIMARY_REMOTE_COLORS[0]) => {
-    hapticFeedback.click();
-    onUpdateState({ moodName: item.name, color: item.color });
-    irBlaster.sendNec(item.hex, item.name, 'Sunset Lamp');
   };
 
   const handleSelectMood = (moodName: string, colorHex: string, irCode: string) => {
@@ -130,37 +116,6 @@ export const SunsetLampView: React.FC<SunsetLampViewProps> = ({
           brightness={state.brightness}
           isDarkMode={isDarkMode}
         />
-
-        {/* 4 Primary Remote Keys (R, G, B, W) directly from the physical remote */}
-        <div className="flex flex-col items-center gap-1.5 pt-1">
-          <div className="flex items-center justify-between w-full px-1">
-            <span
-              className={`text-[10px] font-bold tracking-wider uppercase ${
-                isDarkMode ? 'text-accent-muted' : 'text-slate-500'
-              }`}
-            >
-              Primary Remote Keys (Row 2)
-            </span>
-            <span className="text-[10px] font-mono text-amber-400">Address 0x00F7</span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2.5 w-full">
-            {PRIMARY_REMOTE_COLORS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleSelectPrimary(item)}
-                className="h-11 rounded-2xl flex items-center justify-center font-extrabold text-xs shadow-md border border-white/20 active:scale-90 transition-all"
-                style={{
-                  backgroundColor: item.color,
-                  color: item.id === 'white' ? '#0F172A' : '#FFFFFF',
-                  boxShadow: `0 4px 14px ${item.color}40`,
-                }}
-              >
-                {item.name}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Quick Mood Pills */}
         <div className="flex items-center justify-center gap-2 py-1 overflow-x-auto scrollbar-none">
