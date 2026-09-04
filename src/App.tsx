@@ -6,9 +6,11 @@ import { FanControllerView } from './views/FanControllerView';
 import { FireplaceView, FireplaceState } from './views/FireplaceView';
 import { IrSignalIndicator } from './components/IrSignalIndicator';
 import { CustomCodeEditorModal, CustomKey } from './components/CustomCodeEditorModal';
+import { VoiceAssistantModal } from './components/VoiceAssistantModal';
 import { DynamicCapsuleToast } from './components/DynamicCapsuleToast';
 import { FloatingNavDock, ActiveView } from './components/FloatingNavDock';
 import { irBlaster } from './services/irBlaster';
+import { assistantDeepLink } from './services/assistantDeepLinkService';
 import { FAN_CODES } from './data/fanCodes';
 import { RGB_LED_CONTROLS, getSavedSunsetOffCode } from './data/rgbLedCodes';
 import { FIREPLACE_CODES, getSavedFireplacePowerCode } from './data/fireplaceCodes';
@@ -22,6 +24,7 @@ export default function App() {
       : 'dashboard';
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Light / Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -141,6 +144,50 @@ export default function App() {
     setCustomKeys((prev) => prev.filter((k) => k.id !== id));
   };
 
+  // Assistant & Deep Link Listener Hook (Listens to Google Assistant, Gemini, and Siri requests)
+  useEffect(() => {
+    const cleanup = assistantDeepLink.onLink((res) => {
+      if (!res.handled) return;
+
+      if (res.device === 'sunset' || res.device === 'lamp') {
+        if (res.action === 'off') {
+          setSunsetState((prev) => ({ ...prev, isOn: false }));
+        } else {
+          setSunsetState((prev) => ({ ...prev, isOn: true }));
+        }
+      } else if (res.device === 'fan') {
+        if (res.action === 'off') {
+          setFanState((prev) => ({ ...prev, isOn: false }));
+        } else if (res.action === 'on') {
+          setFanState((prev) => ({ ...prev, isOn: true }));
+        } else {
+          setFanState((prev) => ({ ...prev, isOn: !prev.isOn }));
+        }
+      } else if (res.device === 'fireplace') {
+        if (res.action === 'off') {
+          setFireplaceState((prev) => ({ ...prev, isOn: false }));
+        } else if (res.action === 'on') {
+          setFireplaceState((prev) => ({ ...prev, isOn: true }));
+        } else {
+          setFireplaceState((prev) => ({ ...prev, isOn: !prev.isOn }));
+        }
+      } else if (res.device === 'scene') {
+        if (res.action?.includes('sleep') || res.message?.includes('Goodnight')) {
+          setSunsetState((prev) => ({ ...prev, isOn: false }));
+          setBedsideState((prev) => ({ ...prev, isOn: false }));
+          setFanState((prev) => ({ ...prev, isOn: false }));
+          setFireplaceState((prev) => ({ ...prev, isOn: false }));
+        } else if (res.message?.includes('Cozy')) {
+          setSunsetState((prev) => ({ ...prev, isOn: true, color: '#FB923C', moodName: 'Golden Hour' }));
+          setFireplaceState((prev) => ({ ...prev, isOn: true }));
+        }
+      }
+    });
+
+    assistantDeepLink.init();
+    return cleanup;
+  }, []);
+
   return (
     <div
       className={`min-h-screen font-sans antialiased overflow-x-hidden flex flex-col items-center justify-start transition-colors duration-200 ${
@@ -156,6 +203,7 @@ export default function App() {
           <DashboardView
             onOpenDevice={(devId) => setActiveView(devId as ActiveView)}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenAssistant={() => setIsAssistantOpen(true)}
             isDarkMode={isDarkMode}
             onToggleTheme={() => setIsDarkMode(!isDarkMode)}
             sunsetState={sunsetState}
@@ -233,6 +281,13 @@ export default function App() {
 
       {/* Luxury Dynamic Capsule Toast */}
       <DynamicCapsuleToast />
+
+      {/* AI Voice Assistant & Gemini / Siri Setup Modal */}
+      <VoiceAssistantModal
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        isDarkMode={isDarkMode}
+      />
 
       {/* Custom Key Manager & NEC Code Editor Modal */}
       <CustomCodeEditorModal

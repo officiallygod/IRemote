@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="toggle_sunset"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_sunset_short"
+        android:shortcutLongLabel="@string/shortcut_sunset_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.iremote.app"
+            android:targetClass="com.iremote.app.MainActivity"
+            android:data="iremote://control?device=sunset&amp;action=toggle" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="toggle_fan"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_fan_short"
+        android:shortcutLongLabel="@string/shortcut_fan_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.iremote.app"
+            android:targetClass="com.iremote.app.MainActivity"
+            android:data="iremote://control?device=fan&amp;action=toggle" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="toggle_fireplace"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_fireplace_short"
+        android:shortcutLongLabel="@string/shortcut_fireplace_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.iremote.app"
+            android:targetClass="com.iremote.app.MainActivity"
+            android:data="iremote://control?device=fireplace&amp;action=toggle" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="scene_sleep"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_sleep_short"
+        android:shortcutLongLabel="@string/shortcut_sleep_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.iremote.app"
+            android:targetClass="com.iremote.app.MainActivity"
+            android:data="iremote://scene?name=sleep" />
+    </shortcut>
+</shortcuts>

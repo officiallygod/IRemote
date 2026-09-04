@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, LayoutGrid, Sun, Moon, Sliders } from 'lucide-react';
+import { Plus, LayoutGrid, Sun, Moon, Sliders, Sparkles } from 'lucide-react';
 import { ThreeRoomScene } from '../components/ThreeRoomScene';
 import { DeviceCard } from '../components/DeviceCard';
 import { hapticFeedback } from '../services/haptics';
@@ -8,6 +8,7 @@ import { fetchKarlsruheWeather } from '../services/weatherService';
 interface DashboardViewProps {
   onOpenDevice: (deviceId: string) => void;
   onOpenSettings: () => void;
+  onOpenAssistant: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
   // Shared state
@@ -26,6 +27,7 @@ const ZONES = ['Dorm Room'];
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenDevice,
   onOpenSettings,
+  onOpenAssistant,
   isDarkMode,
   onToggleTheme,
   sunsetState,
@@ -82,6 +84,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* AI Voice & Assistant Integration Button */}
+          <button
+            onClick={() => {
+              hapticFeedback.click();
+              onOpenAssistant();
+            }}
+            className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all active:scale-90 relative ${
+              isDarkMode
+                ? 'bg-surface border-surface-border text-amber-400 hover:text-amber-300'
+                : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm'
+            }`}
+            title="Gemini, Google Assistant & Siri"
+            aria-label="AI Voice Assistant Setup"
+          >
+            <Sparkles size={16} />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+          </button>
+
           {/* Theme Toggle Button */}
           <button
             onClick={() => {

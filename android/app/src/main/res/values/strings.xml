@@ -4,4 +4,12 @@
     <string name="title_activity_main">IRemote</string>
     <string name="package_name">com.iremote.app</string>
     <string name="custom_url_scheme">com.iremote.app</string>
+    <string name="shortcut_sunset_short">Sunset Lamp</string>
+    <string name="shortcut_sunset_long">Toggle Sunset Lamp</string>
+    <string name="shortcut_fan_short">Smart Fan</string>
+    <string name="shortcut_fan_long">Toggle Fan Power</string>
+    <string name="shortcut_fireplace_short">Fireplace</string>
+    <string name="shortcut_fireplace_long">Toggle Fireplace Mist</string>
+    <string name="shortcut_sleep_short">Sleep Mode</string>
+    <string name="shortcut_sleep_long">Turn Off All Appliances</string>
 </resources>
