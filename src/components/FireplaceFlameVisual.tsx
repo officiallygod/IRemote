@@ -93,9 +93,9 @@ export const FireplaceFlameVisual: React.FC<FireplaceFlameVisualProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
-    camera.position.set(0, 0.32, 2.6);
-    camera.lookAt(0, 0.08, 0);
+    const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
+    camera.position.set(0, 0.18, 1.85); // Zoomed in closer for rich prominent detail!
+    camera.lookAt(0, 0.06, 0);
 
     // 2. High-Performance WebGL Renderer
     const renderer = new THREE.WebGLRenderer({
